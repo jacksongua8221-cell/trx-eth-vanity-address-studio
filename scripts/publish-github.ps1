@@ -11,11 +11,14 @@ gh auth status | Out-Null
 
 $Owner = gh api user --jq ".login"
 $FullName = "$Owner/$Repo"
-$ZipPath = Join-Path $PSScriptRoot "..\release\TRX_ETH_靓号地址生成器_便携版.zip"
+$ReleaseDir = Join-Path $PSScriptRoot "..\release"
+$ZipPath = Get-ChildItem -LiteralPath $ReleaseDir -Filter "*.zip" |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1 -ExpandProperty FullName
 $NotesPath = Join-Path $PSScriptRoot "..\docs\RELEASE_NOTES.md"
 
-if (!(Test-Path $ZipPath)) {
-  throw "Portable package not found: $ZipPath"
+if (!$ZipPath -or !(Test-Path $ZipPath)) {
+  throw "Portable package not found in: $ReleaseDir"
 }
 
 git status --short
