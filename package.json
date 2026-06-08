@@ -1,0 +1,26 @@
+{
+  "name": "vanity-address-studio",
+  "version": "0.1.0",
+  "description": "Offline TRX / ETH vanity address generator desktop tool.",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "test:core": "node --test tests/core.test.js",
+    "verify:offline": "node scripts/verify-no-network.js",
+    "samples": "node scripts/generate-samples.js",
+    "screenshot": "electron scripts/capture-screenshot.cjs",
+    "package:portable": "node scripts/package-portable.js"
+  },
+  "dependencies": {
+    "@noble/secp256k1": "^2.3.0",
+    "argon2": "^0.44.0",
+    "bs58check": "^4.0.0",
+    "electron": "^31.7.0",
+    "ethers": "^6.15.0",
+    "js-sha3": "^0.9.3",
+    "tronweb": "^6.0.4"
+  },
+  "devDependencies": {}
+}

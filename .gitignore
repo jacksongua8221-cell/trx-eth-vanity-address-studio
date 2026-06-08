@@ -1,0 +1,13 @@
+node_modules/
+npm-debug.log*
+*.log
+
+release/*_便携版/
+release/*.zip
+
+results/
+*.jsonl
+checkpoint.json
+
+.DS_Store
+Thumbs.db
