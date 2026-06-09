@@ -1,16 +1,7 @@
-const SUSPICIOUS_PATTERNS = [
-  /([a-z0-9])\1{2,}/i,
-  /(?:111|666|888)/,
-  /(?:1111|6666|8888)/,
-  /([a-z0-9]{2})\1{2}/i,
-  /([a-z0-9])\1\1([a-z0-9])\2\2/i,
-  /([a-z0-9])\1([a-z0-9])\2([a-z0-9])\3/i,
-  /([a-z0-9]{3})\1/i,
-  /123456/,
-  /654321/,
-];
-
-const ETH_WORDS = ['dead', 'beef', 'cafe', 'face', 'bad', 'feed'];
+const SEQUENCE_ALPHABETS = {
+  ETH: '0123456789abcdef',
+  TRX: '123456789abcdefghijkmnopqrstuvwxyz',
+};
 
 export function matchesRule(chain, address, rule) {
   const comparable = comparableAddress(chain, address);
@@ -38,18 +29,24 @@ export function matchesRule(chain, address, rule) {
         && comparable.includes(targets.contains)
         && comparable.endsWith(targets.suffix);
     case 'smart':
-      return isSuspiciousVanity(chain, address);
+      return isSuspiciousVanity(chain, address, rule.suspicious);
     default:
       throw new Error(`Unsupported matching mode: ${rule.mode}`);
   }
 }
 
-export function isSuspiciousVanity(chain, address) {
+export function isSuspiciousVanity(chain, address, options = {}) {
+  const config = normalizeSuspiciousOptions(options);
+  if (!config.enabled) return false;
+
   const comparable = comparableAddress(chain, address);
-  if (SUSPICIOUS_PATTERNS.some((pattern) => pattern.test(comparable))) {
+  if (config.leopardEnabled && hasLeopardSuffix(comparable, config.leopardMinLength)) {
     return true;
   }
-  return chain.toUpperCase() === 'ETH' && ETH_WORDS.some((word) => comparable.includes(word));
+  if (config.sequenceEnabled && hasSequenceSuffix(chain, comparable, config.sequenceMinLength)) {
+    return true;
+  }
+  return config.customSuffixes.some((suffix) => suffix && comparable.endsWith(suffix));
 }
 
 export function computeDifficulty(chain, rule) {
@@ -134,4 +131,48 @@ export function normalizeRuleTargets(rule) {
 
 function hasAnyTarget(targets) {
   return Boolean(targets.prefix || targets.contains || targets.suffix);
+}
+
+function normalizeSuspiciousOptions(options = {}) {
+  return {
+    enabled: options.enabled !== false,
+    leopardEnabled: options.leopardEnabled !== false,
+    sequenceEnabled: options.sequenceEnabled !== false,
+    leopardMinLength: clampLength(options.leopardMinLength, 4),
+    sequenceMinLength: clampLength(options.sequenceMinLength, 5),
+    customSuffixes: normalizeCustomSuffixes(options.customSuffixes),
+  };
+}
+
+function clampLength(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(2, Math.min(Math.trunc(parsed), 12));
+}
+
+function normalizeCustomSuffixes(values) {
+  if (!values) return [];
+  const list = Array.isArray(values) ? values : String(values).split(/[\s,，;；]+/);
+  return Array.from(new Set(
+    list
+      .map((value) => String(value).trim().toLowerCase().replace(/^0x/, ''))
+      .filter(Boolean)
+  ));
+}
+
+function hasLeopardSuffix(value, minLength) {
+  if (value.length < minLength) return false;
+  const tail = value.slice(-minLength);
+  return new Set(tail).size === 1;
+}
+
+function hasSequenceSuffix(chain, value, minLength) {
+  if (value.length < minLength) return false;
+  const tail = value.slice(-minLength);
+  const alphabet = SEQUENCE_ALPHABETS[chain.toUpperCase()] ?? SEQUENCE_ALPHABETS.ETH;
+  return alphabet.includes(tail) || reverse(alphabet).includes(tail);
+}
+
+function reverse(value) {
+  return Array.from(value).reverse().join('');
 }

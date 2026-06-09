@@ -129,7 +129,9 @@ async function start() {
     saveMnemonic: els.saveMnemonic.checked && generationSource === 'mnemonic',
     targetCount: els.targetCount.value.trim(),
     cpuThreads: Number(els.cpuThreads.value),
+    batchSize: Number(els.workerBatchSize.value),
     gpuEnabled: els.gpuEnabled.checked,
+    suspicious: buildSuspiciousConfig(),
     autoSave: els.autoSave.checked,
     encryptPrivateKeys: els.encryptPrivateKeys.checked,
     masterPassword: els.masterPassword.value,
@@ -158,6 +160,8 @@ async function restoreCheckpoint() {
   els.suffixTarget.value = rule.suffix || checkpoint.config.target || '';
   els.resultsDir.value = checkpoint.config.resultsDir || els.resultsDir.value;
   els.suspiciousDir.value = checkpoint.config.suspiciousDir || els.suspiciousDir.value;
+  restoreSuspiciousConfig(checkpoint.config.suspicious);
+  if (checkpoint.config.batchSize) els.workerBatchSize.value = checkpoint.config.batchSize;
   latestState = {
     status: 'restored',
     attempts: checkpoint.attempts,
@@ -207,6 +211,31 @@ function renderState(state) {
   els.autosaveState.textContent = els.autoSave.checked ? '开启' : '关闭';
   els.suspiciousCount.textContent = String(state.suspiciousCount || 0);
   if (state.lastCheckpointAt) els.checkpointTime.textContent = new Date(state.lastCheckpointAt).toLocaleTimeString();
+}
+
+function buildSuspiciousConfig() {
+  return {
+    enabled: els.suspiciousEnabled.checked,
+    leopardEnabled: els.suspiciousLeopard.checked,
+    sequenceEnabled: els.suspiciousSequence.checked,
+    leopardMinLength: Number(els.leopardMinLength.value) || 4,
+    sequenceMinLength: Number(els.sequenceMinLength.value) || 5,
+    customSuffixes: els.customSuspiciousSuffixes.value
+      .split(/[\s,，;；]+/)
+      .map((value) => value.trim())
+      .filter(Boolean),
+  };
+}
+
+function restoreSuspiciousConfig(config = {}) {
+  els.suspiciousEnabled.checked = config.enabled !== false;
+  els.suspiciousLeopard.checked = config.leopardEnabled !== false;
+  els.suspiciousSequence.checked = config.sequenceEnabled !== false;
+  els.leopardMinLength.value = config.leopardMinLength || 4;
+  els.sequenceMinLength.value = config.sequenceMinLength || 5;
+  els.customSuspiciousSuffixes.value = Array.isArray(config.customSuffixes)
+    ? config.customSuffixes.join('\n')
+    : '';
 }
 
 function renderGpu(gpu) {

@@ -1,95 +1,90 @@
-# TRX / ETH Vanity Address Studio
+# TRX / ETH 靓号地址生成器
 
-[中文说明](./README.zh-CN.md)
+一个本地离线运行的 Windows 桌面工具，用来生成 **TRX / ETH 靓号地址**。项目重点不是花哨，而是：私钥正确、地址可导入真实钱包、运行过程不联网、不上传任何敏感数据。
 
-An offline desktop vanity address generator for **TRON (TRX)** and **Ethereum (ETH)**, built for people who want wallet-importable addresses without sending private keys, mnemonics, addresses, or task records anywhere.
+[English Overview](#english-overview) · [中文详情](./README.zh-CN.md) · [Release 下载](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases)
 
-> Local first. No cloud worker. No telemetry. No private key upload.
+> 本地离线运行。不上传私钥。不上传助记词。不上传地址。不上传任务记录。
 
-![Main window](./docs/images/main-window.png)
+![主窗口截图](./docs/images/main-window.png)
 
-## Highlights
+## 核心功能
 
-- **TRX and ETH support**: generate standard secp256k1 private keys and valid chain addresses.
-- **Wallet-importable output**: private keys are exported as 64-character hex strings for wallet import.
-- **Multiple matching modes**: prefix, suffix, contains, prefix + suffix, prefix + contains, contains + suffix, full combined rule, and smart detection.
-- **Optional mnemonic mode**: choose private key generation, mnemonic generation, or save both fields when mnemonic mode is enabled.
-- **Probability dashboard**: shows theoretical difficulty, attempts, hit probability, expected 50% / 90% / 99% hit time, and live speed.
-- **GPU status panel**: displays NVIDIA status through `nvidia-smi`; AMD / Intel hooks are reserved.
-- **Crash-resistant checkpointing**: task state is checkpointed while running; random sequence is not replayed, but stats and saved hits continue.
-- **Separate suspicious hits**: target hits stay in the main result list; suspicious vanity-like addresses are saved separately.
-- **TXT result files**: saved result files keep only address/key fields by default.
+- **支持 TRX / ETH**：生成标准 secp256k1 私钥和对应链地址。
+- **钱包可导入**：私钥输出为 64 位十六进制字符串，可用于常见钱包导入。
+- **支持私钥 / 助记词来源**：可以选择私钥生成、助记词生成，也可以在助记词模式下同时保存私钥和助记词。
+- **多种目标匹配方式**：前缀、后缀、包含、前缀 + 后缀、前缀 + 包含、包含 + 后缀、前缀 + 包含 + 后缀。
+- **疑似靓号只看后缀**：支持后缀豹子号、后缀顺子号、自定义后缀，不内置 `dead/beef/cafe` 之类英文词。
+- **CPU 多线程生成**：worker 批量生成，减少 UI 消息开销。
+- **GPU 状态监控**：读取 NVIDIA GPU 名称、使用率、显存、温度、功耗；当前版本不使用 GPU 参与生成。
+- **概率仪表盘**：显示理论难度、累计尝试次数、累计命中概率、预计 50% / 90% / 99% 命中时间。
+- **TXT 保存结果**：目标结果和疑似后缀结果分目录保存，默认每行只保留地址和密钥。
 
-## Address Correctness
-
-The generator follows the standard derivation rules:
+## 地址生成规则
 
 **ETH**
 
 ```text
-private key -> secp256k1 public key -> Keccak-256 -> last 20 bytes -> EIP-55 checksum address
+私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> EIP-55 checksum 地址
 ```
 
 **TRX**
 
 ```text
-private key -> secp256k1 public key -> Keccak-256 -> last 20 bytes -> prepend 0x41 -> Base58Check -> T-address
+私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> 前面加 0x41 -> Base58Check -> T 开头地址
 ```
 
-The test suite verifies generated ETH addresses with `ethers` and generated TRX addresses with `TronWeb`.
+测试会用 `ethers` 校验 ETH 地址和私钥匹配，用 `TronWeb` 校验 TRX 地址和私钥匹配。
 
-## Download
+## 下载使用
 
-Download the Windows portable package from the project Releases page:
+在 Releases 下载 Windows 便携版：
 
 ```text
-TRX_ETH_靓号地址生成器_便携版.zip
+VanityAddressStudio-v0.1.0-win-portable.zip
 ```
 
-Unzip it and double-click:
+解压后双击：
 
 ```text
 TRX_ETH_靓号地址生成器.exe
 ```
 
-## Build From Source
+## 从源码运行
 
 ```bash
 npm install
 npm start
 ```
 
-Create a portable Windows package:
+打包便携版：
 
 ```bash
 npm run package:portable
 ```
 
-Run verification:
+验证：
 
 ```bash
 npm test
 npm run verify:offline
+node scripts/benchmark-workers.js 10 TRX 5
 ```
 
-## Security Model
+## 安全说明
 
-- Runs locally as an Electron desktop app.
-- Does not intentionally call network APIs.
-- Does not upload private keys, mnemonics, addresses, or task history.
-- Private-key encryption is optional and user-controlled.
-- Plaintext export is available, but users should treat exported files as sensitive wallet material.
+- 程序本地运行，不主动调用网络 API。
+- 不上传私钥、助记词、地址或任务记录。
+- 私钥加密保存是可选项，由用户自己控制。
+- 明文 TXT 导出可用，但导出的文件必须按真实钱包私钥处理。
+- 正式使用前建议先用空钱包或小额钱包测试导入流程。
 
-## Tech Stack
+## English Overview
 
-- Electron desktop shell
-- Node.js worker threads
-- `@noble/secp256k1`
-- `ethers`
-- `tronweb`
-- `argon2`
-- AES-256-GCM for encrypted private-key storage
+TRX / ETH Vanity Address Studio is an offline Windows desktop vanity address generator for TRON and Ethereum. It creates wallet-importable secp256k1 private keys, derives valid TRX / ETH addresses, keeps target hits and suspicious suffix hits in separate local TXT files, and never uploads private keys, mnemonics, addresses, or task records.
 
-## Disclaimer
+GPU is currently used for status monitoring only. Address generation runs on CPU worker threads.
 
-This is a local key-generation tool. You are responsible for keeping private keys, mnemonics, result files, backups, and screenshots secure. Test with small or empty wallets before using generated addresses for real funds.
+## License
+
+MIT

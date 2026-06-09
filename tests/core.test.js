@@ -27,6 +27,7 @@ import {
   computeDifficulty,
   cumulativeHitProbability,
   estimateHitTimes,
+  isSuspiciousVanity,
   matchesRule,
 } from '../src/core/matching.js';
 
@@ -143,4 +144,23 @@ test('matching and probability calculations follow requested estimates', () => {
   assert.ok(times.p50Ms > 6000 && times.p50Ms < 8000);
   assert.ok(times.p90Ms > times.p50Ms);
   assert.ok(times.p99Ms > times.p90Ms);
+});
+
+test('suspicious vanity detection only checks configurable suffixes', () => {
+  assert.equal(isSuspiciousVanity('TRX', 'T8888abxdz', {
+    leopardMinLength: 4,
+    sequenceMinLength: 5,
+  }), false);
+  assert.equal(isSuspiciousVanity('TRX', 'Tabcde8888', {
+    leopardMinLength: 4,
+    sequenceMinLength: 5,
+  }), true);
+  assert.equal(isSuspiciousVanity('ETH', '0x1234567890abcdef1234567890abcdef0000dead'), false);
+  assert.equal(isSuspiciousVanity('ETH', '0x1234567890abcdef1234567890abcdef0000dead', {
+    customSuffixes: ['dead'],
+  }), true);
+  assert.equal(isSuspiciousVanity('ETH', '0x1234567890abcdef1234567890abcdef00012345', {
+    leopardMinLength: 4,
+    sequenceMinLength: 5,
+  }), true);
 });

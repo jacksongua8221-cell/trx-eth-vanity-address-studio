@@ -73,13 +73,38 @@
           <input id="cpuThreads" type="number" min="1" max="64" value="4" />
 
           <div class="switch-row">
-            <span>GPU 生成</span>
-            <label class="switch"><input id="gpuEnabled" type="checkbox" /><i></i></label>
+            <span>GPU 状态监控</span>
+            <label class="switch"><input id="gpuEnabled" type="checkbox" disabled /><i></i></label>
           </div>
+          <p class="hint">GPU 暂用于状态监控，当前版本生成任务由 CPU 多线程执行。</p>
           <div class="switch-row">
             <span>自动保存</span>
             <label class="switch"><input id="autoSave" type="checkbox" checked /><i></i></label>
           </div>
+          <div class="switch-row">
+            <span>疑似后缀保存</span>
+            <label class="switch"><input id="suspiciousEnabled" type="checkbox" checked /><i></i></label>
+          </div>
+          <div class="suspicious-options">
+            <label><input id="suspiciousLeopard" type="checkbox" checked /> 后缀豹子号</label>
+            <label><input id="suspiciousSequence" type="checkbox" checked /> 后缀顺子号</label>
+          </div>
+          <div class="target-grid">
+            <div>
+              <label for="leopardMinLength">豹子最少位</label>
+              <input id="leopardMinLength" type="number" min="2" max="12" value="4" />
+            </div>
+            <div>
+              <label for="sequenceMinLength">顺子最少位</label>
+              <input id="sequenceMinLength" type="number" min="2" max="12" value="5" />
+            </div>
+            <div>
+              <label for="workerBatchSize">每批生成</label>
+              <input id="workerBatchSize" type="number" min="256" max="20000" value="512" />
+            </div>
+          </div>
+          <label for="customSuspiciousSuffixes">自定义疑似后缀</label>
+          <textarea id="customSuspiciousSuffixes" spellcheck="false" placeholder="一行一个后缀，例如：8888&#10;9999&#10;1314"></textarea>
           <div class="switch-row">
             <span>私钥加密保存</span>
             <label class="switch"><input id="encryptPrivateKeys" type="checkbox" /><i></i></label>

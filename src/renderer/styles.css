@@ -22,7 +22,7 @@ body {
   color: var(--text);
 }
 
-button, input, select {
+button, input, select, textarea {
   font: inherit;
 }
 
@@ -58,6 +58,11 @@ p {
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.hint {
+  margin-top: 6px;
+  color: var(--warn);
 }
 
 .status-pill, .local-badge {
@@ -105,17 +110,26 @@ label {
   margin: 14px 0 6px;
 }
 
-input, select {
+input, select, textarea {
   width: 100%;
-  height: 36px;
   color: var(--text);
   background: #050b0b;
   border: 1px solid #1d3a3a;
-  padding: 0 10px;
   outline: none;
 }
 
-input:focus, select:focus {
+input, select {
+  height: 36px;
+  padding: 0 10px;
+}
+
+textarea {
+  min-height: 72px;
+  resize: vertical;
+  padding: 8px 10px;
+}
+
+input:focus, select:focus, textarea:focus {
   border-color: var(--cyan);
 }
 
@@ -202,13 +216,13 @@ input:focus, select:focus {
   opacity: .45;
 }
 
-.save-options {
+.save-options, .suspicious-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.save-options label {
+.save-options label, .suspicious-options label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -219,7 +233,7 @@ input:focus, select:focus {
   margin: 0;
 }
 
-.save-options input {
+.save-options input, .suspicious-options input {
   width: auto;
   height: auto;
 }

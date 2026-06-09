@@ -105,6 +105,21 @@ test('UI supports private-key or mnemonic source and selectable TXT save fields'
   assert.match(renderer, /updateSaveOptions/);
 });
 
+test('UI exposes suffix-only suspicious vanity controls', async () => {
+  const html = await readFile('src/renderer/index.html', 'utf8');
+  const renderer = await readFile('src/renderer/renderer.js', 'utf8');
+  const matching = await readFile('src/core/matching.js', 'utf8');
+
+  assert.match(html, /id="suspiciousEnabled"/);
+  assert.match(html, /id="leopardMinLength"/);
+  assert.match(html, /id="sequenceMinLength"/);
+  assert.match(html, /id="customSuspiciousSuffixes"/);
+  assert.match(html, /id="workerBatchSize"/);
+  assert.match(renderer, /buildSuspiciousConfig/);
+  assert.match(matching, /endsWith/);
+  assert.doesNotMatch(matching, /dead|beef|cafe|face|feed/);
+});
+
 test('renderer files keep readable Chinese text without mojibake', async () => {
   const html = await readFile('src/renderer/index.html', 'utf8');
   const renderer = await readFile('src/renderer/renderer.js', 'utf8');
