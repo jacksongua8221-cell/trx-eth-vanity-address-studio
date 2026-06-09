@@ -4,6 +4,16 @@
 
 [返回首页](./README.md)
 
+## 生成结果与打赏
+
+TRX 后缀 `8888` 的生成结果示例：
+
+![生成结果截图](./docs/images/jg.png)
+
+欢迎大哥打赏：`TEmivtvDDCqiaNW4NvX9B6ngYz9f9U8888`
+
+![TRX/TRC20 打赏收款码](./docs/images/trx.jpg)
+
 ## 当前版本说明
 
 - 当前版本使用 **CPU 多线程** 生成地址。
