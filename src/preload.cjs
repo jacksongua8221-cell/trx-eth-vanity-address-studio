@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('vanityApi', {
   defaultFolders: () => ipcRenderer.invoke('app:default-folders'),
+  systemInfo: () => ipcRenderer.invoke('app:system-info'),
   chooseFolder: () => ipcRenderer.invoke('dialog:folder'),
   chooseCheckpoint: () => ipcRenderer.invoke('dialog:checkpoint'),
   chooseTxtFile: () => ipcRenderer.invoke('dialog:txt'),
@@ -10,6 +11,7 @@ contextBridge.exposeInMainWorld('vanityApi', {
   resume: () => ipcRenderer.invoke('session:resume'),
   stop: () => ipcRenderer.invoke('session:stop'),
   clear: () => ipcRenderer.invoke('session:clear'),
+  setRuntimeConfig: (config) => ipcRenderer.invoke('session:runtime-config', config),
   loadCheckpoint: (checkpointPath) => ipcRenderer.invoke('checkpoint:load', checkpointPath),
   openPath: (targetPath) => ipcRenderer.invoke('open:path', targetPath),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),

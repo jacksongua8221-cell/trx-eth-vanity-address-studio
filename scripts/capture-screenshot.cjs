@@ -16,6 +16,13 @@ async function main() {
       suspiciousDir: path.join(base, 'results', 'suspicious'),
     };
   });
+  ipcMain.handle('app:system-info', () => ({
+    cpuModel: 'Screenshot CPU',
+    logicalCores: 8,
+    totalMemoryMb: 16384,
+    recommendedThreads: 7,
+    maxRecommendedThreads: 8,
+  }));
 
   const win = new BrowserWindow({
     width: 1480,

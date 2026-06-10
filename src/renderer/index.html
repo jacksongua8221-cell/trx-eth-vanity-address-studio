@@ -78,6 +78,7 @@
 
           <label for="cpuThreads">CPU 线程数</label>
           <input id="cpuThreads" type="number" min="1" max="64" value="4" />
+          <p id="cpuThreadHint" class="hint">正在读取 CPU 建议...</p>
 
           <div class="switch-row">
             <span>CPU 加速</span>
@@ -158,15 +159,17 @@
 
           <div class="metrics-grid">
             <div class="metric wide"><span>GPU 名称</span><strong id="gpuName">检测中</strong></div>
+            <div class="metric"><span>CPU 型号</span><strong id="cpuModel">检测中</strong></div>
+            <div class="metric"><span>系统内存</span><strong id="systemMemory">检测中</strong></div>
             <div class="metric"><span>GPU 使用率</span><strong id="gpuUtil">0%</strong></div>
             <div class="metric"><span>显存使用量</span><strong id="gpuMem">0 / 0 MB</strong></div>
             <div class="metric"><span>温度</span><strong id="gpuTemp">0°C</strong></div>
             <div class="metric"><span>功耗</span><strong id="gpuPower">0 W</strong></div>
             <div class="metric"><span>GPU 状态</span><strong id="gpuSpeed">监控模式</strong></div>
-            <div class="metric"><span>CPU 生成速度</span><strong id="cpuSpeed">0 addr/sec</strong></div>
-            <div class="metric"><span>总生成速度</span><strong id="totalSpeed">0 addr/sec</strong></div>
+            <div class="metric"><span>CPU 生成速度</span><strong id="cpuSpeed">0 地址/秒</strong></div>
+            <div class="metric"><span>总生成速度</span><strong id="totalSpeed">0 地址/秒</strong></div>
             <div class="metric"><span>当前尝试次数</span><strong id="attempts">0</strong></div>
-            <div class="metric"><span>平均速度</span><strong id="avgSpeed">0 addr/sec</strong></div>
+            <div class="metric"><span>平均速度</span><strong id="avgSpeed">0 地址/秒</strong></div>
             <div class="metric"><span>运行时间</span><strong id="runtime">00:00:00</strong></div>
             <div class="metric"><span>理论难度</span><strong id="difficulty">-</strong></div>
             <div class="metric"><span>平均多少个出一个</span><strong id="oneIn">-</strong></div>
@@ -306,10 +309,11 @@
                     <th>分类</th>
                     <th>私钥</th>
                     <th>助记词</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody id="filterBody">
-                  <tr class="empty"><td colspan="5">实时同步开启后等待疑似靓号，或导入 TXT。</td></tr>
+                  <tr class="empty"><td colspan="6">实时同步开启后等待疑似靓号，或导入 TXT。</td></tr>
                 </tbody>
               </table>
             </div>

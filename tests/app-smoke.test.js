@@ -89,7 +89,7 @@ test('UI starts with no preset target and validates chain-specific rules before 
   assert.match(renderer, /validateRuleBeforeStart/);
   assert.match(renderer, /TRX 地址使用 Base58 字符/);
   assert.match(renderer, /ETH 规则只能填写十六进制字符/);
-  assert.match(main, /resizable:\s*false/);
+  assert.match(main, /resizable:\s*true/);
 });
 
 test('UI supports private-key or mnemonic source and selectable TXT save fields', async () => {
@@ -115,6 +115,7 @@ test('UI exposes suffix-only suspicious vanity controls', async () => {
   assert.match(html, /id="sequenceMinLength"/);
   assert.match(html, /id="customSuspiciousSuffixes"/);
   assert.match(html, /id="workerBatchSize"/);
+  assert.match(html, /id="cpuThreadHint"/);
   assert.match(renderer, /buildSuspiciousConfig/);
   assert.match(matching, /endsWith/);
   assert.doesNotMatch(matching, /dead|beef|cafe|face|feed/);
@@ -136,6 +137,9 @@ test('main app includes generator and vanity filter tabs with working controls',
   assert.match(html, /id="filterExportBtn"/);
   assert.match(renderer, /bindMainTabs/);
   assert.match(renderer, /applyCpuBoostMode/);
+  assert.match(renderer, /applyRuntimeConfigLive/);
+  assert.match(renderer, /updateCpuThreadHint/);
+  assert.match(renderer, /地址\/秒/);
   assert.match(renderer, /updateMatchExample/);
   assert.match(renderer, /bindFilterEvents/);
   assert.match(renderer, /chooseTxtFile/);
@@ -143,8 +147,49 @@ test('main app includes generator and vanity filter tabs with working controls',
   assert.match(renderer, /piece === 'abcde'/);
   assert.match(renderer, /piece === 'edcba'/);
   assert.match(preload, /setGpuMonitoring/);
+  assert.match(preload, /systemInfo/);
+  assert.match(preload, /setRuntimeConfig/);
   assert.match(main, /gpu:monitoring/);
+  assert.match(main, /app:system-info/);
+  assert.match(main, /session:runtime-config/);
+  assert.match(main, /maximizable:\s*true/);
   assert.match(main, /session:suspicious-hit/);
+});
+
+test('filter results keep long values compact and copyable', async () => {
+  const renderer = await readFile('src/renderer/renderer.js', 'utf8');
+  const css = await readFile('src/renderer/styles.css', 'utf8');
+
+  assert.match(renderer, /data-filter-copy/);
+  assert.match(renderer, /copyFilterValue/);
+  assert.match(renderer, /filter-value-preview/);
+  assert.match(css, /\.filter-table-wrap[\s\S]*overflow-x:\s*hidden/);
+  assert.match(css, /\.filter-value-preview[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(css, /\.filter-address[\s\S]*text-overflow:\s*ellipsis/);
+});
+
+test('run status updates immediately from control clicks', async () => {
+  const renderer = await readFile('src/renderer/renderer.js', 'utf8');
+
+  assert.match(renderer, /function setRunStatus/);
+  assert.match(renderer, /setRunStatus\('准备启动'\)/);
+  assert.match(renderer, /setRunStatus\('启动中'\)/);
+  assert.match(renderer, /setRunStatus\('暂停中'\)/);
+  assert.match(renderer, /setRunStatus\('运行中'\)/);
+  assert.match(renderer, /setRunStatus\('停止中'\)/);
+  assert.match(renderer, /latestState\s*=\s*await window\.vanityApi\.stop\(\)/);
+  assert.match(renderer, /stopped:\s*'已停止'/);
+});
+
+test('main process and worker report stopped and early stats', async () => {
+  const main = await readFile('src/main.js', 'utf8');
+  const worker = await readFile('src/worker/generator-worker.js', 'utf8');
+
+  assert.match(main, /publicSessionState\('stopped'\)/);
+  assert.match(main, /speed:\s*\{\s*cpu:\s*0,\s*gpu:\s*0,\s*total:\s*0\s*\}/);
+  assert.match(worker, /STATS_INTERVAL_MS\s*=\s*250/);
+  assert.match(worker, /maybeReportStats/);
+  assert.match(worker, /i % 256 === 0/);
 });
 
 test('renderer files keep readable Chinese text without mojibake', async () => {

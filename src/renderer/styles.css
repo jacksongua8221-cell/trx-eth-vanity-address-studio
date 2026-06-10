@@ -397,10 +397,15 @@ input:focus, select:focus, textarea:focus {
 
 .filter-table-wrap {
   max-height: calc(100vh - 350px);
+  overflow-x: hidden;
 }
 
 .mono {
   font-family: Consolas, "Courier New", monospace;
+}
+
+.muted {
+  color: var(--muted);
 }
 
 .tag {
@@ -415,6 +420,8 @@ mark {
   color: #111300;
   background: var(--warn);
   padding: 0 2px;
+  border: 1px solid #fff0a8;
+  font-weight: 800;
 }
 
 table {
@@ -442,6 +449,62 @@ td.address {
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.filter-table-wrap table {
+  min-width: 0;
+}
+
+.filter-table-wrap th:nth-child(1),
+.filter-table-wrap td:nth-child(1) {
+  width: 52px;
+}
+
+.filter-table-wrap th:nth-child(2),
+.filter-table-wrap td:nth-child(2) {
+  width: 31%;
+}
+
+.filter-table-wrap th:nth-child(3),
+.filter-table-wrap td:nth-child(3) {
+  width: 16%;
+}
+
+.filter-table-wrap th:nth-child(4),
+.filter-table-wrap td:nth-child(4),
+.filter-table-wrap th:nth-child(5),
+.filter-table-wrap td:nth-child(5) {
+  width: 17%;
+}
+
+.filter-table-wrap th:nth-child(6),
+.filter-table-wrap td:nth-child(6) {
+  width: 92px;
+}
+
+.filter-address {
+  display: table-cell;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-copy-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.filter-value-preview {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
 }
 
 table button {

@@ -7,17 +7,26 @@ let filterSource = 'sync';
 let filterActiveCategory = 'ALL';
 let filterItems = [];
 let filterVisible = [];
+let systemInfo = { logicalCores: 4, recommendedThreads: 4, totalMemoryMb: 0, cpuModel: '检测中' };
 
 const els = Object.fromEntries(
   Array.from(document.querySelectorAll('[id]')).map((el) => [el.id, el])
 );
+systemInfo.maxRecommendedThreads = systemInfo.logicalCores;
+systemInfo.cpuModel = '检测中';
 
 init();
 
 async function init() {
   const folders = await window.vanityApi.defaultFolders();
+  systemInfo = await window.vanityApi.systemInfo();
+  systemInfo.maxRecommendedThreads = systemInfo.maxRecommendedThreads || systemInfo.logicalCores || systemInfo.recommendedThreads || 1;
   els.resultsDir.value = folders.resultsDir;
   els.suspiciousDir.value = folders.suspiciousDir;
+  els.cpuModel.textContent = systemInfo.cpuModel;
+  els.systemMemory.textContent = `${formatNumber(systemInfo.totalMemoryMb)} MB`;
+  els.cpuThreads.value = String(systemInfo.recommendedThreads);
+  updateCpuThreadHint();
   bindEvents();
   refreshDifficulty();
   setInterval(() => latestState && renderState(latestState), 1000);
@@ -64,12 +73,21 @@ function bindEvents() {
   els.masterPassword.disabled = !els.encryptPrivateKeys.checked;
   els.chooseResults.addEventListener('click', () => chooseFolder(els.resultsDir));
   els.chooseSuspicious.addEventListener('click', () => chooseFolder(els.suspiciousDir));
-  els.autoThreadsBtn.addEventListener('click', () => {
-    els.cpuThreads.value = String(Math.max(1, navigator.hardwareConcurrency || 4));
+  els.autoThreadsBtn.addEventListener('click', async () => {
+    els.cpuThreads.value = String(systemInfo.recommendedThreads);
     applyCpuBoostMode();
+    await applyRuntimeConfigLive();
   });
-  els.cpuBoost.addEventListener('change', applyCpuBoostMode);
-  els.cpuBoostMode.addEventListener('change', applyCpuBoostMode);
+  els.cpuThreads.addEventListener('input', applyRuntimeConfigLive);
+  els.workerBatchSize.addEventListener('input', applyRuntimeConfigLive);
+  els.cpuBoost.addEventListener('change', async () => {
+    applyCpuBoostMode();
+    await applyRuntimeConfigLive();
+  });
+  els.cpuBoostMode.addEventListener('change', async () => {
+    applyCpuBoostMode();
+    await applyRuntimeConfigLive();
+  });
   els.gpuEnabled.addEventListener('change', async () => {
     await window.vanityApi.setGpuMonitoring(els.gpuEnabled.checked);
     els.gpuHint.textContent = els.gpuEnabled.checked
@@ -81,11 +99,20 @@ function bindEvents() {
   els.tgLink.addEventListener('click', () => window.vanityApi.openExternal('https://t.me/nbb111222'));
   els.closeKeyModal.addEventListener('click', hidePrivateKeyModal);
   els.copyPrivateKeyBtn.addEventListener('click', copyPrivateKeyFromModal);
-  els.pauseBtn.addEventListener('click', () => window.vanityApi.pause());
-  els.resumeBtn.addEventListener('click', () => window.vanityApi.resume());
+  els.pauseBtn.addEventListener('click', async () => {
+    setRunStatus('暂停中');
+    latestState = await window.vanityApi.pause();
+    renderState(latestState);
+  });
+  els.resumeBtn.addEventListener('click', async () => {
+    setRunStatus('运行中');
+    latestState = await window.vanityApi.resume();
+    renderState(latestState);
+  });
   els.stopBtn.addEventListener('click', async () => {
-    await window.vanityApi.stop();
-    els.runStatus.textContent = '已停止';
+    setRunStatus('停止中');
+    latestState = await window.vanityApi.stop();
+    renderState(latestState);
   });
   els.clearBtn.addEventListener('click', async () => {
     latestState = await window.vanityApi.clear();
@@ -118,8 +145,12 @@ function bindEvents() {
   });
   window.vanityApi.onGpu(renderGpu);
   window.vanityApi.onError((message) => {
-    els.runStatus.textContent = `错误：${message}`;
+    setRunStatus(`错误：${message}`);
   });
+}
+
+function setRunStatus(label) {
+  els.runStatus.textContent = label;
 }
 
 async function chooseFolder(input) {
@@ -128,22 +159,29 @@ async function chooseFolder(input) {
 }
 
 async function start() {
+  setRunStatus('准备启动');
   const ruleValidation = validateRuleBeforeStart();
   if (!ruleValidation.valid) {
+    setRunStatus('待机');
     alert(ruleValidation.message);
     return;
   }
   if (els.encryptPrivateKeys.checked && els.masterPassword.value.length < 8) {
+    setRunStatus('待机');
     alert('开启加密保存时，请设置至少 8 位主密码。关闭加密保存则不需要密码。');
     return;
   }
   if (!els.savePrivateKey.checked && !(generationSource === 'mnemonic' && els.saveMnemonic.checked)) {
+    setRunStatus('待机');
     alert('请至少选择一种 TXT 保存内容：私钥或助记词。');
     return;
   }
   if (!els.encryptPrivateKeys.checked) {
     const ok = confirm('风险提示：当前未开启加密保存，私钥会明文写入本地文件。确定继续吗？');
-    if (!ok) return;
+    if (!ok) {
+      setRunStatus('待机');
+      return;
+    }
   }
 
   const runtime = cpuRuntimeConfig();
@@ -167,9 +205,10 @@ async function start() {
     resultsDir: els.resultsDir.value,
     resume: resumeCheckpoint,
   };
+  setRunStatus('启动中');
   latestState = await window.vanityApi.start(config);
   resumeCheckpoint = null;
-  els.runStatus.textContent = '运行中';
+  setRunStatus('运行中');
 }
 
 async function restoreCheckpoint() {
@@ -203,7 +242,7 @@ async function restoreCheckpoint() {
   renderState(latestState);
   updateTargetInputs();
   refreshDifficulty();
-  els.runStatus.textContent = '已恢复';
+  setRunStatus('已恢复');
 }
 
 function renderState(state) {
@@ -219,14 +258,15 @@ function renderState(state) {
     paused: '已暂停',
     completed: '已完成',
     restored: '已恢复',
+    stopped: '已停止',
     running: '运行中',
   };
-  els.runStatus.textContent = statusText[state.status] || '运行中';
-  els.cpuSpeed.textContent = `${formatNumber(state.speed?.cpu || 0)} addr/sec`;
-  els.gpuSpeed.textContent = `${formatNumber(state.speed?.gpu || 0)} addr/sec`;
-  els.totalSpeed.textContent = `${formatNumber(totalSpeed)} addr/sec`;
+  setRunStatus(statusText[state.status] || '运行中');
+  els.cpuSpeed.textContent = `${formatNumber(state.speed?.cpu || 0)} 地址/秒`;
+  els.gpuSpeed.textContent = state.speed?.gpu ? `${formatNumber(state.speed.gpu)} 地址/秒` : '状态监控';
+  els.totalSpeed.textContent = `${formatNumber(totalSpeed)} 地址/秒`;
   els.attempts.textContent = formatNumber(state.attempts);
-  els.avgSpeed.textContent = `${formatNumber(avgSpeed)} addr/sec`;
+  els.avgSpeed.textContent = `${formatNumber(avgSpeed)} 地址/秒`;
   els.runtime.textContent = formatDuration(elapsed);
   els.oneIn.textContent = Number.isFinite(averageCount) ? `${formatNumber(averageCount)} 个` : '-';
   els.attemptRatio.textContent = `${formatNumber(state.attempts)} / ${Number.isFinite(averageCount) ? formatNumber(averageCount) : '-'}`;
@@ -289,12 +329,14 @@ function bindMainTabs() {
 function applyCpuBoostMode() {
   if (!els.cpuBoost.checked) {
     els.workerBatchSize.value = '512';
+    updateCpuThreadHint();
     return;
   }
   const mode = els.cpuBoostMode.value;
-  const threads = Math.max(1, navigator.hardwareConcurrency || Number(els.cpuThreads.value) || 4);
+  const threads = mode === 'max' ? systemInfo.maxRecommendedThreads : systemInfo.recommendedThreads;
   els.cpuThreads.value = String(threads);
   els.workerBatchSize.value = mode === 'max' ? '20000' : mode === 'fast' ? '4096' : '512';
+  updateCpuThreadHint();
 }
 
 function cpuRuntimeConfig() {
@@ -302,6 +344,29 @@ function cpuRuntimeConfig() {
     cpuThreads: Math.max(1, Math.min(Number(els.cpuThreads.value) || 1, 64)),
     batchSize: Math.max(256, Math.min(Number(els.workerBatchSize.value) || 512, 20000)),
   };
+}
+
+function updateCpuThreadHint() {
+  const current = Math.max(1, Math.min(Number(els.cpuThreads.value) || 1, 64));
+  const max = systemInfo.maxRecommendedThreads || systemInfo.logicalCores || current;
+  const recommended = systemInfo.recommendedThreads || Math.max(1, max - 1);
+  const relation = current > max
+    ? '已超过当前检测到的逻辑线程，可能会降低速度'
+    : current >= recommended
+      ? '适合高速生成'
+      : '更省资源，速度会低一些';
+  els.cpuThreadHint.textContent = `检测到 ${max} 个 CPU 逻辑线程，建议 ${recommended}-${max} 线程；当前 ${current} 线程，${relation}。`;
+}
+
+async function applyRuntimeConfigLive() {
+  updateCpuThreadHint();
+  if (!latestState || latestState.status === 'completed' || latestState.status === 'restored') return;
+  const runtime = cpuRuntimeConfig();
+  const applied = await window.vanityApi.setRuntimeConfig(runtime);
+  if (!applied) return;
+  els.cpuThreads.value = String(applied.cpuThreads);
+  els.workerBatchSize.value = String(applied.batchSize);
+  updateCpuThreadHint();
 }
 
 function updateMatchExample() {
@@ -537,18 +602,48 @@ function renderFilterTabs() {
 
 function renderFilterRows() {
   if (!filterVisible.length) {
-    els.filterBody.innerHTML = '<tr class="empty"><td colspan="5">没有符合条件的靓号</td></tr>';
+    els.filterBody.innerHTML = '<tr class="empty"><td colspan="6">没有符合条件的靓号</td></tr>';
     return;
   }
   els.filterBody.innerHTML = filterVisible.map((item) => `
     <tr>
       <td>${escapeHtml(item.chain)}</td>
-      <td class="address" title="${escapeHtml(item.address)}">${highlightFilterAddress(item)}</td>
+      <td class="filter-address mono" title="${escapeHtml(item.address)}">${highlightFilterAddress(item)}</td>
       <td>${item.categories.map((category) => `<span class="tag">${escapeHtml(category)}</span>`).join('') || '-'}</td>
-      <td class="mono">${escapeHtml(item.privateKey || '-')}</td>
-      <td>${escapeHtml(item.mnemonic || '-')}</td>
+      <td>${renderFilterCopyCell(item.privateKey, '私钥')}</td>
+      <td>${renderFilterCopyCell(item.mnemonic, '助记词')}</td>
+      <td><button data-filter-copy="${escapeHtml(item.address)}">复制地址</button></td>
     </tr>
   `).join('');
+  els.filterBody.querySelectorAll('[data-filter-copy]').forEach((button) => {
+    button.addEventListener('click', copyFilterValue);
+  });
+}
+
+function renderFilterCopyCell(value, label) {
+  if (!value) return '<span class="muted">-</span>';
+  return `
+    <div class="filter-copy-cell">
+      <span class="filter-value-preview" title="${escapeHtml(value)}">${escapeHtml(compactValue(value))}</span>
+      <button data-filter-copy="${escapeHtml(value)}">复制${label}</button>
+    </div>
+  `;
+}
+
+function compactValue(value) {
+  const text = String(value);
+  if (text.length <= 18) return text;
+  return `${text.slice(0, 8)}...${text.slice(-6)}`;
+}
+
+async function copyFilterValue(event) {
+  const button = event.currentTarget;
+  await window.vanityApi.copyText(button.dataset.filterCopy);
+  const original = button.textContent;
+  button.textContent = '已复制';
+  setTimeout(() => {
+    button.textContent = original;
+  }, 900);
 }
 
 function highlightFilterAddress(item) {

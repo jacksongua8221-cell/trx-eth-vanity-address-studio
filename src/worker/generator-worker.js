@@ -3,7 +3,9 @@ import { createWalletCandidate } from '../core/address.js';
 import { isSuspiciousVanity, matchesRule } from '../core/matching.js';
 
 const { config, workerIndex } = workerData;
-const BATCH_SIZE = Math.max(256, Math.min(Number(config.batchSize) || 512, 20000));
+const STATS_INTERVAL_MS = 250;
+let runtimeConfig = { ...config };
+let batchSize = clampBatchSize(runtimeConfig.batchSize);
 let running = true;
 let stopped = false;
 let attemptsSinceStats = 0;
@@ -12,6 +14,10 @@ let windowStart = Date.now();
 
 parentPort.on('message', (message) => {
   if (message.type === 'pause') running = false;
+  if (message.type === 'config') {
+    runtimeConfig = { ...runtimeConfig, ...message.config };
+    batchSize = clampBatchSize(runtimeConfig.batchSize);
+  }
   if (message.type === 'resume') {
     running = true;
     loop();
@@ -23,13 +29,13 @@ loop();
 
 async function loop() {
   while (!stopped && running) {
-    for (let i = 0; i < BATCH_SIZE && !stopped && running; i += 1) {
-      const wallet = createWalletCandidate(config.chain, config.generationSource);
+    for (let i = 0; i < batchSize && !stopped && running; i += 1) {
+      const wallet = createWalletCandidate(runtimeConfig.chain, runtimeConfig.generationSource);
       totalLocalAttempts += 1;
       attemptsSinceStats += 1;
 
-      const rule = config.rule ?? { mode: config.matchMode, target: config.target };
-      if (matchesRule(config.chain, wallet.address, rule)) {
+      const rule = runtimeConfig.rule ?? { mode: runtimeConfig.matchMode, target: runtimeConfig.target };
+      if (matchesRule(runtimeConfig.chain, wallet.address, rule)) {
         parentPort.postMessage({
           type: 'target-hit',
           hit: {
@@ -38,7 +44,7 @@ async function loop() {
             localAttempts: totalLocalAttempts,
           },
         });
-      } else if (isSuspiciousVanity(config.chain, wallet.address, config.suspicious)) {
+      } else if (isSuspiciousVanity(runtimeConfig.chain, wallet.address, runtimeConfig.suspicious)) {
         parentPort.postMessage({
           type: 'suspicious-hit',
           hit: {
@@ -48,21 +54,32 @@ async function loop() {
           },
         });
       }
+      if (i % 256 === 0) {
+        await maybeReportStats();
+      }
     }
 
-    const now = Date.now();
-    if (now - windowStart >= 1000) {
-      parentPort.postMessage({
-        type: 'stats',
-        workerIndex,
-        attempts: attemptsSinceStats,
-        addrPerSec: Math.round((attemptsSinceStats * 1000) / (now - windowStart)),
-      });
-      attemptsSinceStats = 0;
-      windowStart = now;
-      await yieldToEventLoop();
-    }
+    await maybeReportStats();
   }
+}
+
+async function maybeReportStats() {
+  const now = Date.now();
+  const elapsed = now - windowStart;
+  if (!attemptsSinceStats || elapsed < STATS_INTERVAL_MS) return;
+  parentPort.postMessage({
+    type: 'stats',
+    workerIndex,
+    attempts: attemptsSinceStats,
+    addrPerSec: Math.round((attemptsSinceStats * 1000) / elapsed),
+  });
+  attemptsSinceStats = 0;
+  windowStart = now;
+  await yieldToEventLoop();
+}
+
+function clampBatchSize(value) {
+  return Math.max(256, Math.min(Number(value) || 512, 20000));
 }
 
 function yieldToEventLoop() {

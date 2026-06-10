@@ -1,5 +1,6 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import { Worker } from 'node:worker_threads';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
@@ -14,6 +15,7 @@ const workerUrl = new URL('./worker/generator-worker.js', import.meta.url);
 
 let mainWindow;
 let workers = [];
+let nextWorkerIndex = 0;
 let session = null;
 let checkpointTimer = null;
 let gpuTimer = null;
@@ -25,8 +27,8 @@ function createWindow() {
     height: 900,
     minWidth: 1180,
     minHeight: 720,
-    resizable: false,
-    maximizable: false,
+    resizable: true,
+    maximizable: true,
     backgroundColor: '#050808',
     webPreferences: {
       preload: join(__dirname, 'preload.cjs'),
@@ -91,6 +93,14 @@ ipcMain.handle('app:default-folders', async () => {
   };
 });
 
+ipcMain.handle('app:system-info', async () => ({
+  cpuModel: os.cpus()[0]?.model ?? 'Unknown CPU',
+  logicalCores: os.cpus().length,
+  totalMemoryMb: Math.round(os.totalmem() / 1024 / 1024),
+  recommendedThreads: Math.max(1, Math.min(os.cpus().length - 1 || 1, 64)),
+  maxRecommendedThreads: Math.max(1, Math.min(os.cpus().length, 64)),
+}));
+
 function checkpointPath() {
   return join(app.getPath('userData'), 'checkpoint.json');
 }
@@ -116,14 +126,10 @@ ipcMain.handle('session:start', async (_event, config) => {
   await ensureFolders(config);
   checkpointTimer = setInterval(() => writeCheckpoint(), 5000);
 
-  const threadCount = Math.max(1, Math.min(Number(config.cpuThreads) || 1, 64));
+  nextWorkerIndex = 0;
+  const threadCount = normalizeThreadCount(config.cpuThreads);
   for (let i = 0; i < threadCount; i += 1) {
-    const worker = new Worker(workerUrl, {
-      workerData: { config, workerIndex: i },
-    });
-    worker.on('message', (message) => handleWorkerMessage(message));
-    worker.on('error', (error) => mainWindow?.webContents.send('session:error', error.message));
-    workers.push(worker);
+    addWorker();
   }
 
   mainWindow?.webContents.send('session:started', publicSessionState());
@@ -143,8 +149,13 @@ ipcMain.handle('session:resume', async () => {
 
 ipcMain.handle('session:stop', async () => {
   await writeCheckpoint();
+  if (session) {
+    session.speed = { cpu: 0, gpu: 0, total: 0 };
+    session.workerSpeeds.clear();
+  }
+  const stoppedState = publicSessionState('stopped');
   stopSession();
-  return { stopped: true };
+  return stoppedState;
 });
 
 ipcMain.handle('session:clear', async () => {
@@ -156,6 +167,28 @@ ipcMain.handle('session:clear', async () => {
   session.startClockMs = Date.now();
   await writeCheckpoint();
   return publicSessionState();
+});
+
+ipcMain.handle('session:runtime-config', async (_event, patch) => {
+  if (!session) return null;
+  if (patch.cpuThreads !== undefined) {
+    await resizeWorkers(normalizeThreadCount(patch.cpuThreads));
+    session.config.cpuThreads = normalizeThreadCount(patch.cpuThreads);
+  }
+  if (patch.batchSize !== undefined) {
+    session.config.batchSize = normalizeBatchSize(patch.batchSize);
+  }
+  workers.forEach((worker) => worker.postMessage({
+    type: 'config',
+    config: {
+      batchSize: session.config.batchSize,
+      suspicious: session.config.suspicious,
+    },
+  }));
+  return {
+    cpuThreads: workers.length,
+    batchSize: session.config.batchSize,
+  };
 });
 
 ipcMain.handle('checkpoint:load', async (_event, checkpointPath) => loadCheckpoint(checkpointPath));
@@ -324,8 +357,43 @@ async function writeCheckpoint() {
 function stopSession() {
   workers.forEach((worker) => worker.terminate());
   workers = [];
+  nextWorkerIndex = 0;
   if (checkpointTimer) clearInterval(checkpointTimer);
   checkpointTimer = null;
+}
+
+function addWorker() {
+  if (!session) return;
+  const workerIndex = nextWorkerIndex;
+  nextWorkerIndex += 1;
+  const worker = new Worker(workerUrl, {
+    workerData: { config: session.config, workerIndex },
+  });
+  worker.workerIndex = workerIndex;
+  worker.on('message', (message) => handleWorkerMessage(message));
+  worker.on('error', (error) => mainWindow?.webContents.send('session:error', error.message));
+  workers.push(worker);
+}
+
+async function resizeWorkers(targetCount) {
+  while (workers.length < targetCount) addWorker();
+  while (workers.length > targetCount) {
+    const worker = workers.pop();
+    if (worker?.workerIndex !== undefined) {
+      session.workerSpeeds.delete(worker.workerIndex);
+      session.speed.cpu = Array.from(session.workerSpeeds.values()).reduce((sum, value) => sum + value, 0);
+      session.speed.total = session.speed.cpu + session.speed.gpu;
+    }
+    await worker?.terminate();
+  }
+}
+
+function normalizeThreadCount(value) {
+  return Math.max(1, Math.min(Number(value) || 1, 64));
+}
+
+function normalizeBatchSize(value) {
+  return Math.max(256, Math.min(Number(value) || 512, 20000));
 }
 
 async function ensureFolders(config) {
