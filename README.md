@@ -1,12 +1,34 @@
-# TRX / ETH 靓号地址生成器
+# TRX / ETH 靓号地址生成器 - 离线钱包地址生成器
 
-这是一个本地离线运行的 Windows 桌面工具，用来生成 **TRX / ETH 靓号地址**。
+本地离线 **TRX 靓号地址生成器 / ETH 靓号地址生成器 / TRON Vanity Address Generator / Ethereum Vanity Address Generator**。
+
+这是一个 Windows 桌面工具，用来生成 **TRX / ETH 靓号钱包地址**。支持私钥、助记词、CPU 多线程、靓号筛选、概率统计、NVIDIA GPU 状态监控。
 
 大白话说：你填一个想要的尾号，比如 `8888`、`888888`，软件就在你电脑本地不断随机生成钱包地址，直到找到符合规则的地址。生成出来的私钥和助记词可以导入真实钱包，所以一定要自己保管好。
 
 [Release 下载](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases) | [中文详情](./README.zh-CN.md)
 
 > 全程本地运行，不上传私钥、不上传助记词、不上传地址、不上传任务记录。
+
+## 搜索关键词
+
+如果你是在 GitHub / Google / 百度搜索工具，可以用这些关键词找到本项目：
+
+```text
+TRX 靓号地址生成器
+TRON 靓号地址生成器
+ETH 靓号地址生成器
+Ethereum 靓号地址生成器
+钱包靓号生成器
+离线靓号地址生成器
+vanity address generator
+TRX vanity address
+TRON vanity address generator
+ETH vanity address
+Ethereum vanity address generator
+MetaMask 私钥导入
+TronLink 私钥导入
+```
 
 ## 软件截图
 
