@@ -1,107 +1,170 @@
-# TRX / ETH Vanity Address Studio
+# TRX / ETH 靓号地址生成器
 
-Offline Windows desktop tool for generating TRX and ETH vanity addresses. It focuses on valid wallet-importable keys, local-only operation, clear probability stats, and practical result management.
+这是一个本地离线运行的 Windows 桌面工具，用来生成 **TRX / ETH 靓号地址**。
 
-[中文说明](./README.zh-CN.md) | [Releases](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases)
+大白话说：你填一个想要的尾号，比如 `8888`、`888888`，软件就在你电脑本地不断随机生成钱包地址，直到找到符合规则的地址。生成出来的私钥和助记词可以导入真实钱包，所以一定要自己保管好。
 
-> Local only. No private keys, mnemonics, addresses, task records, or generated results are uploaded.
+[Release 下载](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases) | [中文详情](./README.zh-CN.md)
 
-![Main window](./docs/images/main-window.png)
+> 全程本地运行，不上传私钥、不上传助记词、不上传地址、不上传任务记录。
 
-## Highlights
+## 软件截图
 
-- Supports **TRX** and **ETH** vanity address generation.
-- Generates standard wallet-importable `secp256k1` private keys.
-- ETH addresses are derived with Keccak-256 and displayed as checksum addresses.
-- TRX addresses follow mainnet rules: public key -> Keccak-256 -> last 20 bytes -> `0x41` prefix -> Base58Check.
-- Supports private-key generation and mnemonic generation modes.
-- TXT output can save private keys, mnemonics, or both when mnemonic mode is enabled.
-- Match modes include prefix, suffix, contains, prefix + suffix, prefix + contains, contains + suffix, prefix + contains + suffix, and smart recognition.
-- Suspicious vanity detection is suffix-only: repeated suffixes, numeric sequences, `abcde` / `edcba`, and user-defined suffixes.
-- Integrated vanity filter tab supports live sync from generated suspicious results and TXT import.
-- Filter results keep long private keys and mnemonics compact, with copy buttons for address, private key, and mnemonic.
-- CPU thread count can be changed while running.
-- The app reads local CPU info and suggests a thread range for the current machine.
-- Runtime status updates immediately for start, pause, resume, and stop.
-- Worker stats report quickly so speed and attempts react without waiting for a large batch to finish.
-- NVIDIA GPU status monitoring is included for GPU name, usage, memory, temperature, and power. Current generation uses CPU workers.
-- Probability dashboard shows difficulty, attempts, hit probability, and estimated 50% / 90% / 99% hit times.
-- Optional encrypted private-key storage remains user-controlled; plaintext TXT export is available with risk warning.
+### 靓号生成
 
-## Screenshots
+![靓号生成页面](./docs/images/generator-page.png)
 
-Generated TRX suffix `8888` example:
+### 靓号筛选
 
-![Generated result](./docs/images/jg.png)
+![靓号筛选页面](./docs/images/filter-page.png)
 
-Donation address:
+## 这个软件能做什么
+
+- 生成 TRX 靓号地址。
+- 生成 ETH 靓号地址。
+- 支持私钥生成。
+- 支持助记词生成。
+- 支持保存私钥、保存助记词，或者两者都保存。
+- 支持前缀、后缀、包含、前缀 + 后缀、前缀 + 包含、包含 + 后缀、前缀 + 包含 + 后缀。
+- 支持智能识别疑似靓号。
+- 支持 CPU 多线程生成。
+- 线程数运行中可以直接改，不用停掉重开。
+- 根据当前电脑 CPU 自动推荐线程数。
+- 支持 NVIDIA GPU 状态监控：显卡名、使用率、显存、温度、功耗。
+- 注意：当前版本 GPU 只做状态监控，生成任务还是 CPU 执行。
+- 支持概率仪表盘：理论难度、当前尝试次数、累计命中概率、预计命中时间。
+- 支持自动保存，防止中途崩溃导致结果丢失。
+- 支持靓号筛选，可以导入 TXT，也可以实时同步当前生成出来的疑似靓号。
+- 筛选结果里地址会高亮命中的靓号部分，私钥和助记词不会挤满表格，直接点按钮复制。
+
+## 适合谁用
+
+这个工具适合想自己离线生成地址的人。
+
+比如你想要：
 
 ```text
-TEmivtvDDCqiaNW4NvX9B6ngYz9f9U8888
+TRX 地址尾号 8888
+TRX 地址尾号 666666
+ETH 地址包含 8888
+ETH 地址前缀 abcd
 ```
 
-![TRX donation QR](./docs/images/trx.jpg)
+就可以用这个软件一直跑。
 
-## Output Files
+但是要注意，靓号不是越长越容易。比如 TRX 后缀 `888888` 的理论难度非常高，不是点一下马上就一定有。
 
-Target hits and suspicious hits are stored separately.
+## 结果保存在哪里
+
+目标命中结果保存到：
 
 ```text
 results/results.txt
+```
+
+疑似靓号结果保存到：
+
+```text
 results/suspicious/suspicious.txt
 ```
 
-TXT lines contain only selected wallet data, for example:
+TXT 每行只保存你选择的内容，例如：
 
 ```text
-address private_key
-address private_key mnemonic words...
+地址 私钥
+地址 私钥 助记词
 ```
 
-## Verification
+疑似靓号不会混进右侧目标命中列表，会单独保存，方便后面筛选。
 
-The test suite verifies:
+## 疑似靓号怎么判断
 
-- ETH private key and address matching with `ethers`.
-- TRX private key and address matching with `TronWeb`.
-- Wallet-import private-key format.
-- Optional mnemonic generation.
-- Encryption and wrong-password rejection.
-- Checkpoint save and restore behavior.
-- Suffix-only suspicious vanity rules.
-- Offline source scan for direct network APIs.
+疑似靓号只看后缀，不看前缀，不看中间。
 
-Run locally:
+```text
+Txxxxxx8888  -> 命中
+T8888xxxxxx  -> 不命中
+Txxx8888xxx  -> 不命中
+```
+
+支持：
+
+```text
+后缀豹子号：8888 / 9999 / aaaa / 7777777 / 88888888
+后缀数字顺子：12345 / 234567 / 98765 / 876543
+后缀字母顺子：abcde / edcba
+自定义后缀：自己一行一个填写
+```
+
+不会内置 `dead / beef / cafe / face / feed` 这种英文词。如果你想要英文尾号，自己在自定义后缀里填。
+
+## 地址和私钥是否真实可用
+
+是的，生成逻辑按真实链规则来：
+
+ETH：
+
+```text
+私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> EIP-55 checksum 地址
+```
+
+TRX：
+
+```text
+私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> 加 0x41 -> Base58Check -> T 开头地址
+```
+
+测试里会用 `ethers` 校验 ETH 私钥和地址，用 `TronWeb` 校验 TRX 私钥和地址。
+
+## 下载使用
+
+到 Release 页面下载 Windows 便携版：
+
+[VanityAddressStudio-v0.1.0-win-portable.zip](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases/download/v0.1.0/VanityAddressStudio-v0.1.0-win-portable.zip)
+
+解压后双击：
+
+```text
+TRX_ETH_靓号地址生成器.exe
+```
+
+## 从源码运行
 
 ```bash
 npm install
-npm test
-npm run verify:offline
+npm start
 ```
 
-Package portable Windows build:
+打包：
 
 ```bash
 npm run package:portable
 ```
 
-## Download
+验证：
 
-Download the portable Windows build from [GitHub Releases](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases), or build locally with the package command above.
-
-The local build outputs:
-
-```text
-release/TRX_ETH_靓号地址生成器_便携版.zip
+```bash
+npm test
+npm run verify:offline
 ```
 
-## Security Notes
+## 打赏地址
 
-- This tool is designed for local offline use.
-- Treat generated private keys and mnemonics as real wallet credentials.
-- Do not share result files, screenshots containing keys, or exported TXT files.
-- Test wallet import with an empty wallet before using generated addresses for real assets.
-- GPU status monitoring does not mean GPU generation is enabled; generation currently runs on CPU workers.
+欢迎大哥打赏：
+
+```text
+TEmivtvDDCqiaNW4NvX9B6ngYz9f9U8888
+```
+
+![TRX/TRC20 打赏收款码](./docs/images/trx.jpg)
+
+## 安全提醒
+
+- 私钥和助记词就是钱包资产凭证，谁拿到谁就能控制钱包。
+- 不要把结果 TXT、截图、私钥、助记词发给别人。
+- 明文保存方便，但风险更高。
+- 正式使用前，建议先用空钱包导入测试。
+- 电脑中毒、远程控制、截图泄露，都可能导致私钥泄露。
 
 ## License
 

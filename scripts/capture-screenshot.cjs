@@ -3,7 +3,10 @@ const { mkdir, writeFile } = require('node:fs/promises');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const output = path.join(root, 'docs', 'images', 'main-window.png');
+const imagesDir = path.join(root, 'docs', 'images');
+const generatorOutput = path.join(imagesDir, 'generator-page.png');
+const filterOutput = path.join(imagesDir, 'filter-page.png');
+const legacyOutput = path.join(imagesDir, 'main-window.png');
 
 app.on('window-all-closed', () => {});
 
@@ -40,9 +43,32 @@ async function main() {
   await win.loadFile(path.join(root, 'src', 'renderer', 'index.html'));
   await new Promise((resolve) => setTimeout(resolve, 1200));
 
-  const image = await win.webContents.capturePage();
-  await mkdir(path.dirname(output), { recursive: true });
-  await writeFile(output, image.toPNG());
+  await mkdir(imagesDir, { recursive: true });
+
+  const generatorImage = await win.webContents.capturePage();
+  await writeFile(generatorOutput, generatorImage.toPNG());
+  await writeFile(legacyOutput, generatorImage.toPNG());
+
+  await win.webContents.executeJavaScript(`
+    document.querySelector('[data-tab="filterTab"]')?.click();
+    document.querySelector('#filterBody').innerHTML = [
+      '<tr>',
+      '<td>TRX</td>',
+      '<td class="filter-address mono" title="TExampleVanityAddressSuffix8888">TExampleVanityAddressSuffix<mark>8888</mark></td>',
+      '<td><span class="tag">豹子4</span></td>',
+      '<td><div class="filter-copy-cell"><span class="filter-value-preview">a1b2c3d4...889900</span><button>复制私钥</button></div></td>',
+      '<td><span class="muted">-</span></td>',
+      '<td><button>复制地址</button></td>',
+      '</tr>'
+    ].join('');
+    document.querySelector('#filterTotal').textContent = '23';
+    document.querySelector('#filterTrx').textContent = '18';
+    document.querySelector('#filterEth').textContent = '5';
+    document.querySelector('#filterCount').textContent = '8';
+  `);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const filterImage = await win.webContents.capturePage();
+  await writeFile(filterOutput, filterImage.toPNG());
 
   win.destroy();
   app.exit(0);
