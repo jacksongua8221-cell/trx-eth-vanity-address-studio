@@ -90,6 +90,34 @@ p {
   margin-top: 14px;
 }
 
+.main-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.main-tabs button, .category-tabs button {
+  color: var(--text);
+  border: 1px solid #1d3a3a;
+  background: #081616;
+  cursor: pointer;
+}
+
+.main-tabs button.active, .category-tabs button.active {
+  color: #00140b;
+  background: var(--green);
+  border-color: var(--green);
+  font-weight: 700;
+}
+
+.tab-page {
+  display: none;
+}
+
+.tab-page.active {
+  display: block;
+}
+
 .panel {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -199,6 +227,16 @@ input:focus, select:focus, textarea:focus {
   background: #171307;
 }
 .hidden { display: none; }
+
+.match-example {
+  margin-top: 8px;
+  border: 1px solid #1d3a3a;
+  background: #050b0b;
+  color: var(--warn);
+  padding: 8px 10px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
 
 .path-row {
   display: grid;
@@ -326,6 +364,57 @@ input:focus, select:focus, textarea:focus {
 .table-wrap {
   overflow: auto;
   max-height: calc(100vh - 210px);
+}
+
+.filter-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.filter-config, .filter-results {
+  min-height: calc(100vh - 214px);
+}
+
+.filter-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-actions {
+  margin-top: 12px;
+}
+
+.filter-table-wrap {
+  max-height: calc(100vh - 350px);
+}
+
+.mono {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.tag {
+  display: inline-block;
+  color: var(--green);
+  border: 1px solid #1d4c3a;
+  padding: 1px 5px;
+  margin: 0 4px 4px 0;
+}
+
+mark {
+  color: #111300;
+  background: var(--warn);
+  padding: 0 2px;
 }
 
 table {
@@ -457,6 +546,12 @@ tr.empty td {
   .control-row {
     grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   }
+  .filter-layout {
+    grid-template-columns: 1fr;
+  }
+  .filter-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -474,6 +569,9 @@ tr.empty td {
     min-height: auto;
   }
   .target-grid, .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .filter-stats {
     grid-template-columns: 1fr;
   }
 }

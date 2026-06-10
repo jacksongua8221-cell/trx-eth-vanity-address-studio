@@ -17,6 +17,12 @@
         <div class="status-pill"><span></span><strong id="runStatus">待机</strong></div>
       </header>
 
+      <nav class="main-tabs">
+        <button class="active" data-tab="generatorTab">靓号生成</button>
+        <button data-tab="filterTab">靓号筛选</button>
+      </nav>
+
+      <section id="generatorTab" class="tab-page active">
       <section class="workspace">
         <aside class="panel config-panel">
           <div class="panel-title">生成配置</div>
@@ -50,6 +56,7 @@
             <option value="prefix_contains_suffix">前缀 + 包含 + 后缀</option>
             <option value="smart">智能识别</option>
           </select>
+          <div id="matchExample" class="match-example">示例：Tabc***8888</div>
 
           <div class="target-grid">
             <div>
@@ -73,10 +80,22 @@
           <input id="cpuThreads" type="number" min="1" max="64" value="4" />
 
           <div class="switch-row">
-            <span>GPU 状态监控</span>
-            <label class="switch"><input id="gpuEnabled" type="checkbox" disabled /><i></i></label>
+            <span>CPU 加速</span>
+            <label class="switch"><input id="cpuBoost" type="checkbox" checked /><i></i></label>
           </div>
-          <p class="hint">GPU 暂用于状态监控，当前版本生成任务由 CPU 多线程执行。</p>
+          <label for="cpuBoostMode">CPU 加速模式</label>
+          <select id="cpuBoostMode">
+            <option value="normal">普通：实时显示</option>
+            <option value="fast" selected>加速：速度优先</option>
+            <option value="max">极限：最高吞吐</option>
+          </select>
+          <button id="autoThreadsBtn" class="full-action" type="button">自动线程</button>
+
+          <div class="switch-row">
+            <span>GPU 状态监控</span>
+            <label class="switch"><input id="gpuEnabled" type="checkbox" checked /><i></i></label>
+          </div>
+          <p id="gpuHint" class="hint">GPU 仅做状态监控，当前版本生成任务由 CPU 多线程执行。</p>
           <div class="switch-row">
             <span>自动保存</span>
             <label class="switch"><input id="autoSave" type="checkbox" checked /><i></i></label>
@@ -143,7 +162,7 @@
             <div class="metric"><span>显存使用量</span><strong id="gpuMem">0 / 0 MB</strong></div>
             <div class="metric"><span>温度</span><strong id="gpuTemp">0°C</strong></div>
             <div class="metric"><span>功耗</span><strong id="gpuPower">0 W</strong></div>
-            <div class="metric"><span>GPU 生成速度</span><strong id="gpuSpeed">0 addr/sec</strong></div>
+            <div class="metric"><span>GPU 状态</span><strong id="gpuSpeed">监控模式</strong></div>
             <div class="metric"><span>CPU 生成速度</span><strong id="cpuSpeed">0 addr/sec</strong></div>
             <div class="metric"><span>总生成速度</span><strong id="totalSpeed">0 addr/sec</strong></div>
             <div class="metric"><span>当前尝试次数</span><strong id="attempts">0</strong></div>
@@ -203,6 +222,99 @@
             </table>
           </div>
         </aside>
+      </section>
+      </section>
+
+      <section id="filterTab" class="tab-page">
+        <section class="filter-layout">
+          <aside class="panel filter-config">
+            <div class="panel-title">筛选配置</div>
+            <div class="segmented">
+              <button class="active" data-filter-source="sync">实时同步</button>
+              <button data-filter-source="import">导入 TXT</button>
+            </div>
+            <p class="hint">实时同步会接收当前生成出来的疑似靓号；导入 TXT 后不再同步。</p>
+
+            <div id="importControls" class="hidden">
+              <button id="importTxtBtn" class="full-action" type="button">导入疑似 TXT</button>
+              <p id="importFileName" class="hint">未导入文件</p>
+            </div>
+
+            <label for="filterChain">链类型</label>
+            <select id="filterChain">
+              <option value="ALL">全部</option>
+              <option value="TRX">TRX</option>
+              <option value="ETH">ETH</option>
+            </select>
+
+            <label>筛选方式</label>
+            <div class="suspicious-options">
+              <label><input id="filterLeopard" type="checkbox" checked /> 豹子</label>
+              <label><input id="filterSequence" type="checkbox" checked /> 顺子</label>
+              <label><input id="filterSuffixOnly" type="checkbox" checked /> 只看后缀</label>
+              <label><input id="filterMnemonicOnly" type="checkbox" /> 有助记词</label>
+            </div>
+
+            <label for="filterLeopardLength">豹子最少位</label>
+            <select id="filterLeopardLength">
+              <option value="3">3 位</option>
+              <option value="4" selected>4 位</option>
+              <option value="5">5 位</option>
+              <option value="6">6 位</option>
+              <option value="7">7 位</option>
+              <option value="8">8 位</option>
+            </select>
+
+            <label for="filterSequenceLength">顺子最少位</label>
+            <select id="filterSequenceLength">
+              <option value="3">3 位</option>
+              <option value="4">4 位</option>
+              <option value="5" selected>5 位</option>
+              <option value="6">6 位</option>
+            </select>
+            <p class="hint">顺子只认数字正倒序，字母只认 abcde / edcba。</p>
+
+            <label for="filterCustomSuffixes">自定义后缀</label>
+            <textarea id="filterCustomSuffixes" spellcheck="false" placeholder="一行一个，例如：8888&#10;9999&#10;1314"></textarea>
+
+            <label for="filterKeyword">关键词</label>
+            <input id="filterKeyword" placeholder="搜索地址 / 私钥 / 助记词" />
+
+            <div class="control-row filter-actions">
+              <button id="filterApplyBtn" class="primary" type="button">应用筛选</button>
+              <button id="filterResetBtn" type="button">重置</button>
+              <button id="filterExportBtn" type="button">导出当前结果</button>
+              <button id="filterClearBtn" type="button">清空列表</button>
+            </div>
+          </aside>
+
+          <section class="panel filter-results">
+            <div class="panel-title">筛选结果</div>
+            <div class="filter-stats">
+              <div class="metric"><span>导入/同步总数</span><strong id="filterTotal">0</strong></div>
+              <div class="metric"><span>TRX</span><strong id="filterTrx">0</strong></div>
+              <div class="metric"><span>ETH</span><strong id="filterEth">0</strong></div>
+              <div class="metric"><span>当前筛选</span><strong id="filterCount">0</strong></div>
+            </div>
+            <div id="filterTabs" class="category-tabs"></div>
+            <div class="table-wrap filter-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>链</th>
+                    <th>地址</th>
+                    <th>分类</th>
+                    <th>私钥</th>
+                    <th>助记词</th>
+                  </tr>
+                </thead>
+                <tbody id="filterBody">
+                  <tr class="empty"><td colspan="5">实时同步开启后等待疑似靓号，或导入 TXT。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
       </section>
 
       <footer class="tg-footer">

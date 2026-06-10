@@ -120,6 +120,33 @@ test('UI exposes suffix-only suspicious vanity controls', async () => {
   assert.doesNotMatch(matching, /dead|beef|cafe|face|feed/);
 });
 
+test('main app includes generator and vanity filter tabs with working controls', async () => {
+  const html = await readFile('src/renderer/index.html', 'utf8');
+  const renderer = await readFile('src/renderer/renderer.js', 'utf8');
+  const preload = await readFile('src/preload.cjs', 'utf8');
+  const main = await readFile('src/main.js', 'utf8');
+
+  assert.match(html, /data-tab="generatorTab"/);
+  assert.match(html, /data-tab="filterTab"/);
+  assert.match(html, /id="cpuBoost"/);
+  assert.match(html, /id="gpuEnabled"/);
+  assert.doesNotMatch(html, /id="gpuEnabled"[^>]*disabled/);
+  assert.match(html, /id="matchExample"/);
+  assert.match(html, /id="filterLeopardLength"[\s\S]*value="7"[\s\S]*value="8"/);
+  assert.match(html, /id="filterExportBtn"/);
+  assert.match(renderer, /bindMainTabs/);
+  assert.match(renderer, /applyCpuBoostMode/);
+  assert.match(renderer, /updateMatchExample/);
+  assert.match(renderer, /bindFilterEvents/);
+  assert.match(renderer, /chooseTxtFile/);
+  assert.match(renderer, /onSuspiciousHit/);
+  assert.match(renderer, /piece === 'abcde'/);
+  assert.match(renderer, /piece === 'edcba'/);
+  assert.match(preload, /setGpuMonitoring/);
+  assert.match(main, /gpu:monitoring/);
+  assert.match(main, /session:suspicious-hit/);
+});
+
 test('renderer files keep readable Chinese text without mojibake', async () => {
   const html = await readFile('src/renderer/index.html', 'utf8');
   const renderer = await readFile('src/renderer/renderer.js', 'utf8');

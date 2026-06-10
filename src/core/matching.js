@@ -1,7 +1,5 @@
-const SEQUENCE_ALPHABETS = {
-  ETH: '0123456789abcdef',
-  TRX: '123456789abcdefghijkmnopqrstuvwxyz',
-};
+const DIGIT_SEQUENCE = '0123456789';
+const LETTER_SEQUENCE = 'abcde';
 
 export function matchesRule(chain, address, rule) {
   const comparable = comparableAddress(chain, address);
@@ -169,8 +167,10 @@ function hasLeopardSuffix(value, minLength) {
 function hasSequenceSuffix(chain, value, minLength) {
   if (value.length < minLength) return false;
   const tail = value.slice(-minLength);
-  const alphabet = SEQUENCE_ALPHABETS[chain.toUpperCase()] ?? SEQUENCE_ALPHABETS.ETH;
-  return alphabet.includes(tail) || reverse(alphabet).includes(tail);
+  return DIGIT_SEQUENCE.includes(tail)
+    || reverse(DIGIT_SEQUENCE).includes(tail)
+    || tail === LETTER_SEQUENCE
+    || tail === reverse(LETTER_SEQUENCE);
 }
 
 function reverse(value) {

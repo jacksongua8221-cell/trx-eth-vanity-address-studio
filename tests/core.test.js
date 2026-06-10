@@ -163,4 +163,12 @@ test('suspicious vanity detection only checks configurable suffixes', () => {
     leopardMinLength: 4,
     sequenceMinLength: 5,
   }), true);
+  assert.equal(isSuspiciousVanity('ETH', '0x1234567890abcdef1234567890abcdef0000abcd', {
+    leopardMinLength: 4,
+    sequenceMinLength: 4,
+  }), false);
+  assert.equal(isSuspiciousVanity('ETH', '0x1234567890abcdef1234567890abcdef000abcde', {
+    leopardMinLength: 4,
+    sequenceMinLength: 5,
+  }), true);
 });

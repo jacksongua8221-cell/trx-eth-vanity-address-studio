@@ -3,6 +3,10 @@ let generationSource = 'private_key';
 let latestState = null;
 let resumeCheckpoint = null;
 let difficulty = { probability: 0, difficulty: Infinity };
+let filterSource = 'sync';
+let filterActiveCategory = 'ALL';
+let filterItems = [];
+let filterVisible = [];
 
 const els = Object.fromEntries(
   Array.from(document.querySelectorAll('[id]')).map((el) => [el.id, el])
@@ -25,6 +29,7 @@ function bindEvents() {
       document.querySelectorAll('[data-chain]').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
       chain = button.dataset.chain;
+      updateMatchExample();
       refreshDifficulty();
     });
   });
@@ -40,11 +45,16 @@ function bindEvents() {
   ['matchMode', 'prefixTarget', 'containsTarget', 'suffixTarget'].forEach((id) => {
     els[id].addEventListener('input', () => {
       updateTargetInputs();
+      updateMatchExample();
       refreshDifficulty();
     });
   });
   updateTargetInputs();
   updateSaveOptions();
+  updateMatchExample();
+  applyCpuBoostMode();
+  bindMainTabs();
+  bindFilterEvents();
   els.encryptPrivateKeys.addEventListener('change', () => {
     const encrypted = els.encryptPrivateKeys.checked;
     els.plainWarning.classList.toggle('hidden', encrypted);
@@ -54,6 +64,18 @@ function bindEvents() {
   els.masterPassword.disabled = !els.encryptPrivateKeys.checked;
   els.chooseResults.addEventListener('click', () => chooseFolder(els.resultsDir));
   els.chooseSuspicious.addEventListener('click', () => chooseFolder(els.suspiciousDir));
+  els.autoThreadsBtn.addEventListener('click', () => {
+    els.cpuThreads.value = String(Math.max(1, navigator.hardwareConcurrency || 4));
+    applyCpuBoostMode();
+  });
+  els.cpuBoost.addEventListener('change', applyCpuBoostMode);
+  els.cpuBoostMode.addEventListener('change', applyCpuBoostMode);
+  els.gpuEnabled.addEventListener('change', async () => {
+    await window.vanityApi.setGpuMonitoring(els.gpuEnabled.checked);
+    els.gpuHint.textContent = els.gpuEnabled.checked
+      ? 'GPU 仅做状态监控，当前版本生成任务由 CPU 多线程执行。'
+      : 'GPU 状态监控已关闭，生成任务继续由 CPU 多线程执行。';
+  });
   els.startBtn.addEventListener('click', start);
   els.restoreBtn.addEventListener('click', restoreCheckpoint);
   els.tgLink.addEventListener('click', () => window.vanityApi.openExternal('https://t.me/nbb111222'));
@@ -85,6 +107,11 @@ function bindEvents() {
   window.vanityApi.onHit(({ result, suspiciousCount }) => {
     if (!result.isSuspicious) addResultRow(result);
     els.suspiciousCount.textContent = String(suspiciousCount);
+  });
+  window.vanityApi.onSuspiciousHit((item) => {
+    if (filterSource !== 'sync') return;
+    addFilterItem(item, '实时同步');
+    applyFilter();
   });
   window.vanityApi.onCheckpoint(({ savedAt }) => {
     els.checkpointTime.textContent = new Date(savedAt).toLocaleTimeString();
@@ -119,6 +146,7 @@ async function start() {
     if (!ok) return;
   }
 
+  const runtime = cpuRuntimeConfig();
   const config = {
     chain,
     matchMode: els.matchMode.value,
@@ -128,8 +156,8 @@ async function start() {
     savePrivateKey: els.savePrivateKey.checked,
     saveMnemonic: els.saveMnemonic.checked && generationSource === 'mnemonic',
     targetCount: els.targetCount.value.trim(),
-    cpuThreads: Number(els.cpuThreads.value),
-    batchSize: Number(els.workerBatchSize.value),
+    cpuThreads: runtime.cpuThreads,
+    batchSize: runtime.batchSize,
     gpuEnabled: els.gpuEnabled.checked,
     suspicious: buildSuspiciousConfig(),
     autoSave: els.autoSave.checked,
@@ -244,6 +272,338 @@ function renderGpu(gpu) {
   els.gpuMem.textContent = `${gpu.memoryUsedMb} / ${gpu.memoryTotalMb} MB`;
   els.gpuTemp.textContent = `${gpu.temperatureC}°C`;
   els.gpuPower.textContent = `${gpu.powerW} W`;
+  els.gpuSpeed.textContent = '监控模式';
+}
+
+function bindMainTabs() {
+  document.querySelectorAll('[data-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-tab]').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.tab-page').forEach((page) => page.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById(button.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+function applyCpuBoostMode() {
+  if (!els.cpuBoost.checked) {
+    els.workerBatchSize.value = '512';
+    return;
+  }
+  const mode = els.cpuBoostMode.value;
+  const threads = Math.max(1, navigator.hardwareConcurrency || Number(els.cpuThreads.value) || 4);
+  els.cpuThreads.value = String(threads);
+  els.workerBatchSize.value = mode === 'max' ? '20000' : mode === 'fast' ? '4096' : '512';
+}
+
+function cpuRuntimeConfig() {
+  return {
+    cpuThreads: Math.max(1, Math.min(Number(els.cpuThreads.value) || 1, 64)),
+    batchSize: Math.max(256, Math.min(Number(els.workerBatchSize.value) || 512, 20000)),
+  };
+}
+
+function updateMatchExample() {
+  const mode = els.matchMode.value;
+  const p = els.prefixTarget.value.trim() || '8888';
+  const c = els.containsTarget.value.trim() || '666';
+  const s = els.suffixTarget.value.trim() || '8888';
+  const head = chain === 'ETH' ? '0x' : 'T';
+  const body = {
+    prefix: `${head}${p}***abc`,
+    suffix: `${head}abc***${s}`,
+    contains: `${head}abc***${c}***xyz`,
+    prefix_suffix: `${head}${p}***abc***${s}`,
+    prefix_contains: `${head}${p}***${c}***xyz`,
+    contains_suffix: `${head}abc***${c}***${s}`,
+    prefix_contains_suffix: `${head}${p}***abc***${c}***${s}`,
+    smart: `${head}abc***8888`,
+  }[mode] || `${head}abc***${s}`;
+  els.matchExample.textContent = `示例：${body}`;
+}
+
+function bindFilterEvents() {
+  document.querySelectorAll('[data-filter-source]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter-source]').forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      filterSource = button.dataset.filterSource;
+      els.importControls.classList.toggle('hidden', filterSource !== 'import');
+      if (filterSource === 'sync') {
+        els.importFileName.textContent = '未导入文件';
+        filterItems = [];
+        filterActiveCategory = 'ALL';
+      }
+      applyFilter();
+    });
+  });
+
+  els.importTxtBtn.addEventListener('click', async () => {
+    const file = await window.vanityApi.chooseTxtFile();
+    if (!file) return;
+    filterSource = 'import';
+    filterItems = parseFilterText(file.content, file.path);
+    filterActiveCategory = 'ALL';
+    els.importFileName.textContent = file.path;
+    applyFilter();
+  });
+
+  [
+    'filterChain',
+    'filterLeopard',
+    'filterSequence',
+    'filterSuffixOnly',
+    'filterMnemonicOnly',
+    'filterLeopardLength',
+    'filterSequenceLength',
+    'filterCustomSuffixes',
+    'filterKeyword',
+  ].forEach((id) => els[id].addEventListener('input', applyFilter));
+
+  els.filterApplyBtn.addEventListener('click', applyFilter);
+  els.filterResetBtn.addEventListener('click', resetFilter);
+  els.filterClearBtn.addEventListener('click', () => {
+    filterItems = [];
+    filterActiveCategory = 'ALL';
+    applyFilter();
+  });
+  els.filterExportBtn.addEventListener('click', exportFilterResults);
+}
+
+function addFilterItem(item, source) {
+  filterItems.unshift(normalizeFilterItem({
+    ...item,
+    source,
+  }));
+}
+
+function parseFilterText(text, source) {
+  return text.split(/\r?\n/)
+    .map((line, index) => parseFilterLine(line, index + 1, source))
+    .filter(Boolean);
+}
+
+function parseFilterLine(line, lineNo, source) {
+  const raw = line.trim();
+  if (!raw) return null;
+  const parts = raw.split(/\s+/);
+  const addressIndex = parts.findIndex((part) => detectFilterChain(part) !== 'UNKNOWN');
+  if (addressIndex < 0) return null;
+  const address = parts[addressIndex];
+  const privateKey = parts.find((part, index) => index !== addressIndex && /^(?:0x)?[0-9a-fA-F]{64}$/.test(part)) || '';
+  const mnemonic = parts.filter((part, index) => index !== addressIndex && part !== privateKey).join(' ');
+  return normalizeFilterItem({
+    lineNo,
+    source,
+    chain: detectFilterChain(address),
+    address,
+    privateKey,
+    mnemonic,
+  });
+}
+
+function normalizeFilterItem(item) {
+  const chainName = item.chain || detectFilterChain(item.address);
+  const body = comparableForFilter(chainName, item.address);
+  const leopardRuns = findFilterLeopards(body);
+  const sequences = findFilterSequences(body);
+  const customSuffixes = getFilterCustomSuffixes().filter((suffix) => body.endsWith(suffix));
+  const categories = [
+    ...leopardRuns.map((run) => `豹子${run.length}`),
+    ...sequences.map((seq) => `${seq.direction}${seq.length}`),
+    ...customSuffixes.map((suffix) => `自定义:${suffix}`),
+  ];
+  return {
+    ...item,
+    chain: chainName,
+    body,
+    leopardRuns,
+    sequences,
+    customSuffixes,
+    categories: Array.from(new Set(categories)),
+  };
+}
+
+function detectFilterChain(address) {
+  if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)) return 'TRX';
+  if (/^0x[0-9a-fA-F]{40}$/.test(address)) return 'ETH';
+  return 'UNKNOWN';
+}
+
+function comparableForFilter(chainName, address) {
+  return chainName === 'ETH' ? String(address).toLowerCase().replace(/^0x/, '') : String(address).slice(1);
+}
+
+function findFilterLeopards(value) {
+  const runs = [];
+  let start = 0;
+  for (let i = 1; i <= value.length; i += 1) {
+    if (i === value.length || value[i].toLowerCase() !== value[start].toLowerCase()) {
+      const length = i - start;
+      if (length >= 3) runs.push({ start, end: i, length, value: value.slice(start, i) });
+      start = i;
+    }
+  }
+  return runs;
+}
+
+function findFilterSequences(value) {
+  const lower = value.toLowerCase();
+  const found = [];
+  for (let length = 3; length <= Math.min(8, lower.length); length += 1) {
+    for (let start = 0; start <= lower.length - length; start += 1) {
+      const piece = lower.slice(start, start + length);
+      if ('0123456789'.includes(piece) || piece === 'abcde') {
+        found.push({ start, end: start + length, length, direction: '顺子', value: value.slice(start, start + length) });
+      }
+      if ('9876543210'.includes(piece) || piece === 'edcba') {
+        found.push({ start, end: start + length, length, direction: '倒顺', value: value.slice(start, start + length) });
+      }
+    }
+  }
+  return found;
+}
+
+function getFilterCustomSuffixes() {
+  return els.filterCustomSuffixes.value
+    .split(/[\s,，;；]+/)
+    .map((value) => value.trim().toLowerCase().replace(/^0x/, ''))
+    .filter(Boolean);
+}
+
+function applyFilter() {
+  filterItems = filterItems.map(normalizeFilterItem);
+  const chainFilter = els.filterChain.value;
+  const leopardMin = Number(els.filterLeopardLength.value);
+  const sequenceMin = Number(els.filterSequenceLength.value);
+  const keyword = els.filterKeyword.value.trim().toLowerCase();
+  const customSuffixes = getFilterCustomSuffixes();
+
+  filterVisible = filterItems.filter((item) => {
+    if (chainFilter !== 'ALL' && item.chain !== chainFilter) return false;
+    if (filterActiveCategory !== 'ALL' && !item.categories.includes(filterActiveCategory)) return false;
+    if (els.filterMnemonicOnly.checked && !item.mnemonic) return false;
+    if (keyword && !`${item.address} ${item.privateKey} ${item.mnemonic}`.toLowerCase().includes(keyword)) return false;
+    const suffixOnly = els.filterSuffixOnly.checked;
+    const leopardHit = els.filterLeopard.checked && item.leopardRuns.some((run) => run.length >= leopardMin && (!suffixOnly || run.end === item.body.length));
+    const sequenceHit = els.filterSequence.checked && item.sequences.some((seq) => seq.length >= sequenceMin && (!suffixOnly || seq.end === item.body.length));
+    const customHit = customSuffixes.length > 0 && customSuffixes.some((suffix) => item.body.endsWith(suffix));
+    return leopardHit || sequenceHit || customHit || (!els.filterLeopard.checked && !els.filterSequence.checked && customSuffixes.length === 0);
+  });
+
+  renderFilterStats();
+  renderFilterTabs();
+  renderFilterRows();
+}
+
+function resetFilter() {
+  els.filterChain.value = 'ALL';
+  els.filterLeopard.checked = true;
+  els.filterSequence.checked = true;
+  els.filterSuffixOnly.checked = true;
+  els.filterMnemonicOnly.checked = false;
+  els.filterLeopardLength.value = '4';
+  els.filterSequenceLength.value = '5';
+  els.filterCustomSuffixes.value = '';
+  els.filterKeyword.value = '';
+  filterActiveCategory = 'ALL';
+  applyFilter();
+}
+
+function renderFilterStats() {
+  els.filterTotal.textContent = formatNumber(filterItems.length);
+  els.filterTrx.textContent = formatNumber(filterItems.filter((item) => item.chain === 'TRX').length);
+  els.filterEth.textContent = formatNumber(filterItems.filter((item) => item.chain === 'ETH').length);
+  els.filterCount.textContent = formatNumber(filterVisible.length);
+}
+
+function renderFilterTabs() {
+  const counts = new Map([['ALL', filterItems.length]]);
+  for (const item of filterItems) {
+    for (const category of item.categories) counts.set(category, (counts.get(category) || 0) + 1);
+  }
+  const tabs = Array.from(counts.entries()).sort((a, b) => a[0] === 'ALL' ? -1 : b[1] - a[1]);
+  els.filterTabs.innerHTML = tabs.map(([name, count]) => (
+    `<button class="${filterActiveCategory === name ? 'active' : ''}" data-filter-category="${escapeHtml(name)}">${escapeHtml(name)} (${formatNumber(count)})</button>`
+  )).join('');
+  els.filterTabs.querySelectorAll('[data-filter-category]').forEach((button) => {
+    button.addEventListener('click', () => {
+      filterActiveCategory = button.dataset.filterCategory;
+      applyFilter();
+    });
+  });
+}
+
+function renderFilterRows() {
+  if (!filterVisible.length) {
+    els.filterBody.innerHTML = '<tr class="empty"><td colspan="5">没有符合条件的靓号</td></tr>';
+    return;
+  }
+  els.filterBody.innerHTML = filterVisible.map((item) => `
+    <tr>
+      <td>${escapeHtml(item.chain)}</td>
+      <td class="address" title="${escapeHtml(item.address)}">${highlightFilterAddress(item)}</td>
+      <td>${item.categories.map((category) => `<span class="tag">${escapeHtml(category)}</span>`).join('') || '-'}</td>
+      <td class="mono">${escapeHtml(item.privateKey || '-')}</td>
+      <td>${escapeHtml(item.mnemonic || '-')}</td>
+    </tr>
+  `).join('');
+}
+
+function highlightFilterAddress(item) {
+  const prefix = item.chain === 'ETH' ? '0x' : 'T';
+  const ranges = mergeRanges([
+    ...item.leopardRuns,
+    ...item.sequences,
+    ...item.customSuffixes.map((suffix) => ({ start: item.body.length - suffix.length, end: item.body.length })),
+  ]);
+  let html = escapeHtml(prefix);
+  let cursor = 0;
+  for (const range of ranges) {
+    html += escapeHtml(item.body.slice(cursor, range.start));
+    html += `<mark>${escapeHtml(item.body.slice(range.start, range.end))}</mark>`;
+    cursor = range.end;
+  }
+  html += escapeHtml(item.body.slice(cursor));
+  return html;
+}
+
+function mergeRanges(ranges) {
+  return ranges
+    .filter((range) => range.start >= 0 && range.end > range.start)
+    .sort((a, b) => a.start - b.start)
+    .reduce((merged, range) => {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end) merged.push({ start: range.start, end: range.end });
+      else last.end = Math.max(last.end, range.end);
+      return merged;
+    }, []);
+}
+
+function exportFilterResults() {
+  const name = sanitizeFileName(`${filterName()}_${filterVisible.length}.txt`);
+  const lines = filterVisible.map((item) => [item.address, item.privateKey, item.mnemonic].filter(Boolean).join(' '));
+  const blob = new Blob([`${lines.join('\n')}${lines.length ? '\n' : ''}`], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function filterName() {
+  const parts = [];
+  if (els.filterChain.value !== 'ALL') parts.push(els.filterChain.value);
+  if (filterActiveCategory !== 'ALL') parts.push(filterActiveCategory);
+  if (els.filterLeopard.checked) parts.push(`豹子${els.filterLeopardLength.value}+`);
+  if (els.filterSequence.checked) parts.push(`顺子${els.filterSequenceLength.value}+`);
+  if (els.filterSuffixOnly.checked) parts.push('仅后缀');
+  return parts.join('_') || '全部';
+}
+
+function sanitizeFileName(name) {
+  return name.replace(/[\\/:*?"<>|]/g, '_');
 }
 
 function renderResults(results) {

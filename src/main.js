@@ -2,7 +2,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron'
 import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { appendFile, mkdir } from 'node:fs/promises';
+import { appendFile, mkdir, readFile } from 'node:fs/promises';
 
 import { createCheckpoint, loadCheckpoint, saveCheckpoint } from './core/checkpoint.js';
 import { formatPrivateKeyForWallet } from './core/address.js';
@@ -17,6 +17,7 @@ let workers = [];
 let session = null;
 let checkpointTimer = null;
 let gpuTimer = null;
+let gpuMonitoringEnabled = true;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,7 +43,9 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   gpuTimer = setInterval(async () => {
-    mainWindow?.webContents.send('gpu:update', await probeGpu());
+    if (gpuMonitoringEnabled) {
+      mainWindow?.webContents.send('gpu:update', await probeGpu());
+    }
   }, 2000);
 });
 
@@ -65,6 +68,19 @@ ipcMain.handle('dialog:checkpoint', async () => {
     filters: [{ name: 'Checkpoint', extensions: ['json'] }],
   });
   return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('dialog:txt', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Text', extensions: ['txt', 'log', 'csv'] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  const filePath = result.filePaths[0];
+  return {
+    path: filePath,
+    content: await readFile(filePath, 'utf8'),
+  };
 });
 
 ipcMain.handle('app:default-folders', async () => {
@@ -154,6 +170,23 @@ ipcMain.handle('open:external', async (_event, url) => {
     throw new Error('External URL is not allowed');
   }
   await shell.openExternal(url);
+});
+
+ipcMain.handle('gpu:monitoring', async (_event, enabled) => {
+  gpuMonitoringEnabled = Boolean(enabled);
+  if (!gpuMonitoringEnabled) {
+    mainWindow?.webContents.send('gpu:update', {
+      name: '监控已关闭',
+      utilization: 0,
+      memoryUsedMb: 0,
+      memoryTotalMb: 0,
+      temperatureC: 0,
+      powerW: 0,
+    });
+  } else {
+    mainWindow?.webContents.send('gpu:update', await probeGpu());
+  }
+  return { enabled: gpuMonitoringEnabled };
 });
 
 ipcMain.handle('clipboard:copy', async (_event, text) => {
@@ -249,6 +282,15 @@ async function saveHit(hit, suspicious) {
 
   if (suspicious) {
     session.suspiciousCount += 1;
+    mainWindow?.webContents.send('session:suspicious-hit', {
+      chain: hit.chain,
+      address: hit.address,
+      privateKey: walletPrivateKey,
+      mnemonic: hit.mnemonic || '',
+      rule: hit.rule,
+      generatedAt: now,
+      attempts: result.attempts,
+    });
   } else {
     session.results.push(stripPrivateKey(result));
   }
