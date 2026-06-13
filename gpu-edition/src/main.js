@@ -145,7 +145,7 @@ async function startEth(config) {
     kind: 'target',
     cwd: dir,
     file: exe,
-    args: ['-C', 'ETH', '-i', '-f', 'patterns.txt'],
+    args: ['-C', 'ETH', '-i', '-k', '-f', 'patterns.txt'],
   });
 }
 
@@ -180,6 +180,10 @@ function spawnTracked(meta) {
 
 function handleOutput(proc, chunk) {
   const text = clean(chunk);
+  if (session && text.trim()) {
+    session.status = 'running';
+    session.detail = session.speed > 0 ? session.detail : 'running';
+  }
   updateSpeed(proc, text);
   updateProgress(text);
   proc.buffer += text;

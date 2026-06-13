@@ -18,6 +18,7 @@ suspicious.txt
 patterns.txt
 diy.txt
 高仿成功地址.txt
+/靓.txt
 cache-opencl.*
 *.oclbin
 
