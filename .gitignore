@@ -1,13 +1,29 @@
 node_modules/
 npm-debug.log*
 *.log
+*.err
+*.out
 
-release/*_便携版/
+release/*
+!release/.gitkeep
 release/*.zip
 
 results/
+**/results/
+**/runtime/
 *.jsonl
 checkpoint.json
+target.txt
+suspicious.txt
+patterns.txt
+diy.txt
+高仿成功地址.txt
+cache-opencl.*
+*.oclbin
+
+靓号/靓号生成器_便携版/
+靓号/*.zip
+CUDAOpenCL GPU/
 
 .DS_Store
 Thumbs.db

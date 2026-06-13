@@ -129,6 +129,7 @@ test('main app includes generator and vanity filter tabs with working controls',
 
   assert.match(html, /data-tab="generatorTab"/);
   assert.match(html, /data-tab="filterTab"/);
+  assert.match(html, /data-tab="turboTab"/);
   assert.match(html, /id="cpuBoost"/);
   assert.match(html, /id="gpuEnabled"/);
   assert.doesNotMatch(html, /id="gpuEnabled"[^>]*disabled/);
@@ -154,6 +155,37 @@ test('main app includes generator and vanity filter tabs with working controls',
   assert.match(main, /session:runtime-config/);
   assert.match(main, /maximizable:\s*true/);
   assert.match(main, /session:suspicious-hit/);
+});
+
+test('turbo target mode is isolated from the normal generator', async () => {
+  const html = await readFile('src/renderer/index.html', 'utf8');
+  const renderer = await readFile('src/renderer/renderer.js', 'utf8');
+  const preload = await readFile('src/preload.cjs', 'utf8');
+  const main = await readFile('src/main.js', 'utf8');
+  const worker = await readFile('src/worker/turbo-worker.js', 'utf8');
+
+  assert.match(html, /id="turboTab"/);
+  assert.match(html, /id="turboStartBtn"/);
+  assert.match(html, /id="turboEngine"/);
+  assert.match(html, /id="turboTargets"/);
+  assert.match(html, /id="turboSpeedMode"/);
+  assert.match(html, /id="turboResultsBody"/);
+  assert.match(renderer, /bindTurboEvents/);
+  assert.match(renderer, /startTurbo/);
+  assert.match(renderer, /parseTurboTargets/);
+  assert.match(renderer, /renderTurboState/);
+  assert.match(renderer, /addTurboResultRow/);
+  assert.match(preload, /turboStart/);
+  assert.match(preload, /onTurboUpdate/);
+  assert.match(main, /turbo:start/);
+  assert.match(main, /turbo:stop/);
+  assert.match(main, /turboWorkers/);
+  assert.match(main, /turbo-worker\.js/);
+  assert.match(worker, /createWalletCandidate/);
+  assert.match(worker, /matchesRule/);
+  assert.match(worker, /matchesTurboRule/);
+  assert.match(worker, /suffixes/);
+  assert.doesNotMatch(worker, /isSuspiciousVanity/);
 });
 
 test('filter results keep long values compact and copyable', async () => {

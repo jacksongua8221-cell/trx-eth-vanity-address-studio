@@ -1,0 +1,13 @@
+TRX / ETH GPU 靓号目标生成器
+
+只保存命中结果，不保存未命中地址。
+
+结果文件：
+results\target.txt   目标命中
+results\leopard.txt  6位以上豹子
+
+保存格式：
+地址 私钥
+
+TRX 使用 trxhao OpenCL GPU 核心。
+ETH 使用 vanitygen++ oclvanitygen++ OpenCL GPU 核心。

@@ -1,0 +1,14 @@
+{
+  "name": "vanity-clean-gpu",
+  "version": "1.0.0",
+  "main": "src/main.js",
+  "type": "module",
+  "description": "Clean TRX / ETH GPU vanity target generator.",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.js && node --check src/renderer/app.js"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0"
+  }
+}

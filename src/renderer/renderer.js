@@ -7,6 +7,8 @@ let filterSource = 'sync';
 let filterActiveCategory = 'ALL';
 let filterItems = [];
 let filterVisible = [];
+let latestTurboState = null;
+let turboPrivateKeys = new Map();
 let systemInfo = { logicalCores: 4, recommendedThreads: 4, totalMemoryMb: 0, cpuModel: '检测中' };
 
 const els = Object.fromEntries(
@@ -23,6 +25,7 @@ async function init() {
   systemInfo.maxRecommendedThreads = systemInfo.maxRecommendedThreads || systemInfo.logicalCores || systemInfo.recommendedThreads || 1;
   els.resultsDir.value = folders.resultsDir;
   els.suspiciousDir.value = folders.suspiciousDir;
+  els.turboResultsDir.value = folders.resultsDir;
   els.cpuModel.textContent = systemInfo.cpuModel;
   els.systemMemory.textContent = `${formatNumber(systemInfo.totalMemoryMb)} MB`;
   els.cpuThreads.value = String(systemInfo.recommendedThreads);
@@ -64,6 +67,7 @@ function bindEvents() {
   applyCpuBoostMode();
   bindMainTabs();
   bindFilterEvents();
+  bindTurboEvents();
   els.encryptPrivateKeys.addEventListener('change', () => {
     const encrypted = els.encryptPrivateKeys.checked;
     els.plainWarning.classList.toggle('hidden', encrypted);
@@ -144,6 +148,16 @@ function bindEvents() {
     els.checkpointTime.textContent = new Date(savedAt).toLocaleTimeString();
   });
   window.vanityApi.onGpu(renderGpu);
+  window.vanityApi.onTurboUpdate((state) => {
+    latestTurboState = state;
+    renderTurboState(state);
+  });
+  window.vanityApi.onTurboHit((result) => {
+    addTurboResultRow(result);
+  });
+  window.vanityApi.onTurboError((message) => {
+    els.turboStatus.textContent = `错误：${message}`;
+  });
   window.vanityApi.onError((message) => {
     setRunStatus(`错误：${message}`);
   });
@@ -434,6 +448,150 @@ function bindFilterEvents() {
     applyFilter();
   });
   els.filterExportBtn.addEventListener('click', exportFilterResults);
+}
+
+function bindTurboEvents() {
+  els.chooseTurboResults.addEventListener('click', () => chooseFolder(els.turboResultsDir));
+  els.turboStartBtn.addEventListener('click', startTurbo);
+  els.turboPauseBtn.addEventListener('click', async () => {
+    els.turboStatus.textContent = '暂停中';
+    latestTurboState = await window.vanityApi.turboPause();
+    renderTurboState(latestTurboState);
+  });
+  els.turboResumeBtn.addEventListener('click', async () => {
+    els.turboStatus.textContent = '运行中';
+    latestTurboState = await window.vanityApi.turboResume();
+    renderTurboState(latestTurboState);
+  });
+  els.turboStopBtn.addEventListener('click', async () => {
+    els.turboStatus.textContent = '停止中';
+    latestTurboState = await window.vanityApi.turboStop();
+    renderTurboState(latestTurboState);
+  });
+}
+
+async function startTurbo() {
+  let targets = parseTurboTargets();
+  if (!targets.length) {
+    alert('请至少填写一个极速目标后缀。');
+    return;
+  }
+  const chainName = els.turboChain.value;
+  if (chainName === 'ETH') {
+    targets = targets.map((target) => target.replace(/^0x/i, ''));
+  }
+  const mode = els.turboMatchMode.value;
+  const invalid = targets.find((target) => !isValidTargetForChain(chainName, target));
+  if (invalid) {
+    alert(`${chainName} 目标内容不合法：${invalid}`);
+    return;
+  }
+  if (els.turboEngine.value === 'cuda') {
+    alert('CUDA GPU 极速核心已预留接口，当前版本请使用 CPU 极速。');
+    return;
+  }
+  turboPrivateKeys = new Map();
+  renderTurboResults([]);
+  els.turboStatus.textContent = '启动中';
+  const rule = mode === 'suffix'
+    ? { mode: 'suffix', suffixes: targets }
+    : { mode, target: targets[0], [mode]: targets[0] };
+  latestTurboState = await window.vanityApi.turboStart({
+    chain: chainName,
+    engine: els.turboEngine.value,
+    rule,
+    targetCount: els.turboTargetCount.value.trim(),
+    cpuThreads: Number(els.turboThreads.value) || 1,
+    batchSize: Number(els.turboBatchSize.value) || 4096,
+    speedMode: els.turboSpeedMode.value,
+    resultsDir: els.turboResultsDir.value,
+  });
+  renderTurboState(latestTurboState);
+}
+
+function parseTurboTargets() {
+  return els.turboTargets.value
+    .split(/[\s,，;；]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function isValidTargetForChain(chainName, target) {
+  if (chainName === 'ETH') return /^[0-9a-fA-F]+$/.test(target.replace(/^0x/i, ''));
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(target);
+}
+
+function renderTurboState(state) {
+  if (!state) {
+    els.turboStatus.textContent = '已停止';
+    els.turboSpeed.textContent = '0 地址/秒';
+    return;
+  }
+  const statusText = {
+    running: '运行中',
+    paused: '已暂停',
+    stopped: '已停止',
+    completed: '已完成',
+  };
+  const elapsed = state.elapsedMs || 0;
+  const speed = state.speed?.total || state.speed?.cpu || 0;
+  const avgSpeed = elapsed > 0 ? Math.round((state.attempts * 1000) / elapsed) : 0;
+  els.turboStatus.textContent = statusText[state.status] || '运行中';
+  els.turboEngineState.textContent = state.engine === 'cuda' ? 'CUDA GPU 极速' : 'CPU 极速';
+  els.turboSpeed.textContent = `${formatNumber(speed)} 地址/秒`;
+  els.turboAvgSpeed.textContent = `${formatNumber(avgSpeed)} 地址/秒`;
+  els.turboAttempts.textContent = formatNumber(state.attempts || 0);
+  els.turboRuntime.textContent = formatDuration(elapsed);
+  els.turboHitCount.textContent = formatNumber(state.results?.length || 0);
+}
+
+function renderTurboResults(results) {
+  turboPrivateKeys = new Map();
+  els.turboResultsBody.innerHTML = '';
+  if (!results?.length) {
+    els.turboResultsBody.innerHTML = '<tr class="empty"><td colspan="8">极速模式等待目标命中结果</td></tr>';
+    return;
+  }
+  results.forEach(addTurboResultRow);
+}
+
+function addTurboResultRow(result) {
+  const empty = els.turboResultsBody.querySelector('.empty');
+  if (empty) empty.remove();
+  if (result.privateKey) turboPrivateKeys.set(result.id, result.privateKey);
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${escapeHtml(result.chain)}</td>
+    <td class="address" title="${escapeHtml(result.address)}">${escapeHtml(result.address)}</td>
+    <td>${escapeHtml(result.rule || '极速目标')}</td>
+    <td>${formatDuration(result.elapsedMs || 0)}</td>
+    <td>${formatNumber(result.attempts || 0)}</td>
+    <td>${escapeHtml(result.saveStatus || 'saved')}</td>
+    <td><button data-turbo-copy="${escapeHtml(result.address)}">复制地址</button></td>
+    <td><button data-turbo-key="${escapeHtml(result.id)}">复制私钥</button></td>
+  `;
+  els.turboResultsBody.prepend(row);
+  row.querySelector('[data-turbo-copy]').addEventListener('click', copyTurboValue);
+  row.querySelector('[data-turbo-key]').addEventListener('click', async (event) => {
+    const privateKey = turboPrivateKeys.get(event.target.dataset.turboKey);
+    if (!privateKey) {
+      alert('此结果来自恢复状态，当前内存没有私钥。请查看已保存 TXT。');
+      return;
+    }
+    await window.vanityApi.copyText(privateKey);
+    event.target.textContent = '已复制';
+    setTimeout(() => {
+      event.target.textContent = '复制私钥';
+    }, 900);
+  });
+}
+
+async function copyTurboValue(event) {
+  await window.vanityApi.copyText(event.target.dataset.turboCopy);
+  event.target.textContent = '已复制';
+  setTimeout(() => {
+    event.target.textContent = '复制地址';
+  }, 900);
 }
 
 function addFilterItem(item, source) {

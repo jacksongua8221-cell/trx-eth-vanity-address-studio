@@ -373,7 +373,14 @@ input:focus, select:focus, textarea:focus {
   margin-top: 14px;
 }
 
-.filter-config, .filter-results {
+.turbo-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(640px, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.filter-config, .filter-results, .turbo-config, .turbo-dashboard {
   min-height: calc(100vh - 214px);
 }
 
@@ -395,9 +402,18 @@ input:focus, select:focus, textarea:focus {
   margin-top: 12px;
 }
 
+.turbo-actions {
+  margin-top: 14px;
+}
+
 .filter-table-wrap {
   max-height: calc(100vh - 350px);
   overflow-x: hidden;
+}
+
+.turbo-table-wrap {
+  margin-top: 14px;
+  max-height: calc(100vh - 430px);
 }
 
 .mono {
@@ -610,6 +626,9 @@ tr.empty td {
     grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   }
   .filter-layout {
+    grid-template-columns: 1fr;
+  }
+  .turbo-layout {
     grid-template-columns: 1fr;
   }
   .filter-stats {

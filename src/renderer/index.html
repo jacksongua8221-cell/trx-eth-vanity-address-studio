@@ -20,6 +20,7 @@
       <nav class="main-tabs">
         <button class="active" data-tab="generatorTab">靓号生成</button>
         <button data-tab="filterTab">靓号筛选</button>
+        <button data-tab="turboTab">极速引擎</button>
       </nav>
 
       <section id="generatorTab" class="tab-page active">
@@ -314,6 +315,106 @@
                 </thead>
                 <tbody id="filterBody">
                   <tr class="empty"><td colspan="6">实时同步开启后等待疑似靓号，或导入 TXT。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section id="turboTab" class="tab-page">
+        <section class="turbo-layout">
+          <aside class="panel turbo-config">
+            <div class="panel-title">极速目标模式</div>
+            <p class="hint">极速模式只跑目标规则，不保存疑似靓号，不生成助记词，用于最高速度搜索。</p>
+
+            <label for="turboChain">链类型</label>
+            <select id="turboChain">
+              <option value="TRX">TRX</option>
+              <option value="ETH">ETH</option>
+            </select>
+
+            <label for="turboEngine">生成引擎</label>
+            <select id="turboEngine">
+              <option value="cpu">CPU 极速</option>
+              <option value="cuda" disabled>CUDA GPU 极速（预留）</option>
+            </select>
+
+            <label for="turboMatchMode">目标规则</label>
+            <select id="turboMatchMode">
+              <option value="suffix" selected>后缀</option>
+              <option value="prefix">前缀</option>
+              <option value="contains">包含</option>
+            </select>
+
+            <label for="turboTargets">目标内容</label>
+            <textarea id="turboTargets" spellcheck="false" placeholder="一行一个或逗号分隔，例如：&#10;8888&#10;6666&#10;9999"></textarea>
+            <p class="hint">极速后缀支持多选，任意一个后缀命中都会自动保存。</p>
+
+            <label for="turboTargetCount">目标数量</label>
+            <input id="turboTargetCount" value="1" placeholder="1 / 10 / 无限" />
+
+            <label for="turboThreads">CPU 线程数</label>
+            <input id="turboThreads" type="number" min="1" max="64" value="4" />
+
+            <label for="turboBatchSize">每批生成</label>
+            <input id="turboBatchSize" type="number" min="256" max="50000" value="4096" />
+
+            <label for="turboSpeedMode">速度模式</label>
+            <select id="turboSpeedMode">
+              <option value="eco">低功耗</option>
+              <option value="balanced">平衡</option>
+              <option value="max" selected>极速</option>
+            </select>
+
+            <label>结果保存文件夹</label>
+            <div class="path-row">
+              <input id="turboResultsDir" readonly />
+              <button id="chooseTurboResults">选择</button>
+            </div>
+
+            <div class="control-row turbo-actions">
+              <button id="turboStartBtn" class="primary" type="button">开始极速</button>
+              <button id="turboPauseBtn" type="button">暂停</button>
+              <button id="turboResumeBtn" type="button">继续</button>
+              <button id="turboStopBtn" type="button">停止</button>
+            </div>
+          </aside>
+
+          <section class="panel turbo-dashboard">
+            <div class="dashboard-head">
+              <div>
+                <div class="panel-title">极速运行状态</div>
+                <p>当前版本已接入独立 CPU 极速目标引擎，CUDA 接口预留，后续可替换为 native GPU 核心。</p>
+              </div>
+              <div class="local-badge" id="turboStatus">待机</div>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="metric"><span>引擎</span><strong id="turboEngineState">CPU 极速</strong></div>
+              <div class="metric"><span>速度</span><strong id="turboSpeed">0 地址/秒</strong></div>
+              <div class="metric"><span>平均速度</span><strong id="turboAvgSpeed">0 地址/秒</strong></div>
+              <div class="metric"><span>尝试次数</span><strong id="turboAttempts">0</strong></div>
+              <div class="metric"><span>运行时间</span><strong id="turboRuntime">00:00:00</strong></div>
+              <div class="metric"><span>命中数量</span><strong id="turboHitCount">0</strong></div>
+            </div>
+
+            <div class="table-wrap turbo-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>链</th>
+                    <th>地址</th>
+                    <th>规则</th>
+                    <th>用时</th>
+                    <th>尝试</th>
+                    <th>保存</th>
+                    <th>复制</th>
+                    <th>私钥</th>
+                  </tr>
+                </thead>
+                <tbody id="turboResultsBody">
+                  <tr class="empty"><td colspan="8">极速模式等待目标命中结果</td></tr>
                 </tbody>
               </table>
             </div>

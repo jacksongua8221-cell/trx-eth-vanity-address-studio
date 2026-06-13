@@ -12,11 +12,15 @@ import { probeGpu } from './main/gpu.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const workerUrl = new URL('./worker/generator-worker.js', import.meta.url);
+const turboWorkerUrl = new URL('./worker/turbo-worker.js', import.meta.url);
 
 let mainWindow;
 let workers = [];
+let turboWorkers = [];
 let nextWorkerIndex = 0;
+let nextTurboWorkerIndex = 0;
 let session = null;
+let turboSession = null;
 let checkpointTimer = null;
 let gpuTimer = null;
 let gpuMonitoringEnabled = true;
@@ -53,6 +57,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   stopSession();
+  stopTurboSession();
   if (gpuTimer) clearInterval(gpuTimer);
   if (process.platform !== 'darwin') app.quit();
 });
@@ -231,6 +236,49 @@ ipcMain.handle('private-key:get', async (_event, payload) => getPrivateKey(paylo
 
 ipcMain.handle('private-key:decrypt', async (_event, payload) => getPrivateKey(payload));
 
+ipcMain.handle('turbo:start', async (_event, config) => {
+  stopTurboSession();
+  const startedAt = new Date().toISOString();
+  turboSession = {
+    config,
+    startedAt,
+    startClockMs: Date.now(),
+    attempts: 0,
+    results: [],
+    speed: { cpu: 0, gpu: 0, total: 0 },
+    workerSpeeds: new Map(),
+  };
+  await ensureTurboFolder(config);
+  nextTurboWorkerIndex = 0;
+  const threadCount = normalizeThreadCount(config.cpuThreads);
+  for (let i = 0; i < threadCount; i += 1) {
+    addTurboWorker();
+  }
+  const state = publicTurboState();
+  mainWindow?.webContents.send('turbo:update', state);
+  return state;
+});
+
+ipcMain.handle('turbo:pause', async () => {
+  turboWorkers.forEach((worker) => worker.postMessage({ type: 'pause' }));
+  return publicTurboState('paused');
+});
+
+ipcMain.handle('turbo:resume', async () => {
+  turboWorkers.forEach((worker) => worker.postMessage({ type: 'resume' }));
+  return publicTurboState('running');
+});
+
+ipcMain.handle('turbo:stop', async () => {
+  if (turboSession) {
+    turboSession.speed = { cpu: 0, gpu: 0, total: 0 };
+    turboSession.workerSpeeds.clear();
+  }
+  const state = publicTurboState('stopped');
+  stopTurboSession();
+  return state;
+});
+
 async function getPrivateKey({ resultId, password = '' }) {
   if (!session) throw new Error('No active session');
   if (session.privateKeysById.has(resultId)) {
@@ -271,6 +319,48 @@ async function handleWorkerMessage(message) {
   if (message.type === 'suspicious-hit') {
     await saveHit(message.hit, true);
   }
+}
+
+async function handleTurboWorkerMessage(message) {
+  if (!turboSession) return;
+
+  if (message.type === 'stats') {
+    turboSession.attempts += message.attempts;
+    turboSession.workerSpeeds.set(message.workerIndex, message.addrPerSec);
+    turboSession.speed.cpu = Array.from(turboSession.workerSpeeds.values()).reduce((sum, value) => sum + value, 0);
+    turboSession.speed.total = turboSession.speed.cpu + turboSession.speed.gpu;
+    mainWindow?.webContents.send('turbo:update', publicTurboState());
+  }
+
+  if (message.type === 'target-hit') {
+    await saveTurboHit(message.hit);
+    if (shouldStopTurboAfterTarget()) {
+      const completed = publicTurboState('completed');
+      stopTurboSession();
+      mainWindow?.webContents.send('turbo:update', completed);
+    }
+  }
+}
+
+async function saveTurboHit(hit) {
+  const now = new Date().toISOString();
+  const walletPrivateKey = formatPrivateKeyForWallet(hit.chain, hit.privateKey);
+  const result = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    chain: hit.chain,
+    address: hit.address,
+    privateKey: walletPrivateKey,
+    rule: hit.rule,
+    generatedAt: now,
+    attempts: turboSession.attempts + hit.localAttempts,
+    elapsedMs: currentTurboElapsedMs(),
+    saveStatus: 'saved',
+  };
+  turboSession.results.push(result);
+  const file = join(turboSession.config.resultsDir, 'results.txt');
+  await appendFile(file, `${result.address} ${result.privateKey}\n`, 'utf8');
+  mainWindow?.webContents.send('turbo:hit', result);
+  mainWindow?.webContents.send('turbo:update', publicTurboState());
 }
 
 async function saveHit(hit, suspicious) {
@@ -362,6 +452,12 @@ function stopSession() {
   checkpointTimer = null;
 }
 
+function stopTurboSession() {
+  turboWorkers.forEach((worker) => worker.terminate());
+  turboWorkers = [];
+  nextTurboWorkerIndex = 0;
+}
+
 function addWorker() {
   if (!session) return;
   const workerIndex = nextWorkerIndex;
@@ -388,6 +484,19 @@ async function resizeWorkers(targetCount) {
   }
 }
 
+function addTurboWorker() {
+  if (!turboSession) return;
+  const workerIndex = nextTurboWorkerIndex;
+  nextTurboWorkerIndex += 1;
+  const worker = new Worker(turboWorkerUrl, {
+    workerData: { config: turboSession.config, workerIndex },
+  });
+  worker.workerIndex = workerIndex;
+  worker.on('message', (message) => handleTurboWorkerMessage(message));
+  worker.on('error', (error) => mainWindow?.webContents.send('turbo:error', error.message));
+  turboWorkers.push(worker);
+}
+
 function normalizeThreadCount(value) {
   return Math.max(1, Math.min(Number(value) || 1, 64));
 }
@@ -399,6 +508,10 @@ function normalizeBatchSize(value) {
 async function ensureFolders(config) {
   await mkdir(config.resultsDir, { recursive: true });
   await mkdir(config.suspiciousDir, { recursive: true });
+}
+
+async function ensureTurboFolder(config) {
+  await mkdir(config.resultsDir, { recursive: true });
 }
 
 function currentElapsedMs() {
@@ -419,6 +532,28 @@ function publicSessionState(status = 'running') {
   };
 }
 
+function currentTurboElapsedMs() {
+  if (!turboSession) return 0;
+  return Date.now() - turboSession.startClockMs;
+}
+
+function publicTurboState(status = 'running') {
+  if (!turboSession) return null;
+  return {
+    status,
+    attempts: turboSession.attempts,
+    elapsedMs: currentTurboElapsedMs(),
+    results: turboSession.results.map(stripTurboPrivateKey),
+    speed: turboSession.speed,
+    engine: turboSession.config.engine,
+  };
+}
+
+function stripTurboPrivateKey(result) {
+  const { privateKey, ...safe } = result;
+  return safe;
+}
+
 function stripPrivateKey(result) {
   const { privateKey, plainPrivateKey, ...safe } = result;
   return safe;
@@ -436,6 +571,13 @@ function shouldStopAfterTarget() {
   if (!raw || raw === '无限') return false;
   const targetCount = Number(raw);
   return Number.isFinite(targetCount) && targetCount > 0 && session.results.length >= targetCount;
+}
+
+function shouldStopTurboAfterTarget() {
+  const raw = String(turboSession.config.targetCount ?? '').trim();
+  if (!raw || raw === '\u65e0\u9650' || raw.toLowerCase() === 'infinite') return false;
+  const targetCount = Number(raw);
+  return Number.isFinite(targetCount) && targetCount > 0 && turboSession.results.length >= targetCount;
 }
 
 async function findSavedPrivateKeyRecord(resultId) {

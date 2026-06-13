@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('vanityApi', {
   copyText: (text) => ipcRenderer.invoke('clipboard:copy', text),
   getPrivateKey: (payload) => ipcRenderer.invoke('private-key:get', payload),
   decryptPrivateKey: (payload) => ipcRenderer.invoke('private-key:decrypt', payload),
+  turboStart: (config) => ipcRenderer.invoke('turbo:start', config),
+  turboPause: () => ipcRenderer.invoke('turbo:pause'),
+  turboResume: () => ipcRenderer.invoke('turbo:resume'),
+  turboStop: () => ipcRenderer.invoke('turbo:stop'),
   onSessionUpdate: (callback) => ipcRenderer.on('session:update', (_event, value) => callback(value)),
   onSessionStarted: (callback) => ipcRenderer.on('session:started', (_event, value) => callback(value)),
   onHit: (callback) => ipcRenderer.on('session:hit', (_event, value) => callback(value)),
@@ -26,4 +30,7 @@ contextBridge.exposeInMainWorld('vanityApi', {
   onCheckpoint: (callback) => ipcRenderer.on('checkpoint:saved', (_event, value) => callback(value)),
   onGpu: (callback) => ipcRenderer.on('gpu:update', (_event, value) => callback(value)),
   onError: (callback) => ipcRenderer.on('session:error', (_event, value) => callback(value)),
+  onTurboUpdate: (callback) => ipcRenderer.on('turbo:update', (_event, value) => callback(value)),
+  onTurboHit: (callback) => ipcRenderer.on('turbo:hit', (_event, value) => callback(value)),
+  onTurboError: (callback) => ipcRenderer.on('turbo:error', (_event, value) => callback(value)),
 });

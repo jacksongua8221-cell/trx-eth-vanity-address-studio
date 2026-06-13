@@ -1,0 +1,31 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #020807; color: #dcfff8; font-family: "Microsoft YaHei", Arial, sans-serif; }
+main { padding: 18px; }
+header { display: flex; justify-content: space-between; align-items: center; border: 1px solid #12433d; background: #04110f; padding: 14px 18px; }
+h1, h2, p { margin: 0; }
+h1, h2 { color: #18d7ff; }
+p, label, span, .hint { color: #82aaa3; }
+#status { color: #2dff8a; border: 1px solid #12433d; padding: 10px 18px; min-width: 100px; text-align: center; }
+.layout { display: grid; grid-template-columns: 360px minmax(680px, 1fr); gap: 14px; margin-top: 14px; }
+.panel { border: 1px solid #12433d; background: #061411; padding: 16px; min-height: calc(100vh - 120px); }
+label { display: block; margin: 14px 0 7px; }
+input, select, textarea, button { width: 100%; border: 1px solid #12433d; background: #020b0a; color: #eaffff; padding: 11px 12px; font-size: 16px; outline: none; }
+textarea { min-height: 165px; resize: vertical; font-family: Consolas, monospace; }
+button { cursor: pointer; }
+.primary { background: #2dff8a; color: #00120c; font-weight: 700; border-color: #2dff8a; }
+.path { display: grid; grid-template-columns: 1fr 82px; gap: 8px; }
+.buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.check { display: flex; gap: 10px; align-items: center; border: 1px solid #12433d; padding: 10px; }
+.check input { width: auto; }
+.hint { border: 1px solid #12433d; padding: 9px 10px; color: #ffd84a; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cards div { min-height: 92px; border: 1px solid #12433d; background: #081916; padding: 14px; }
+.cards b { display: block; color: #2dff8a; margin-top: 10px; font-size: 20px; overflow-wrap: anywhere; }
+.table { overflow: auto; margin-top: 16px; max-height: calc(100vh - 380px); }
+table { width: 100%; min-width: 920px; border-collapse: collapse; }
+th, td { border-bottom: 1px solid #12433d; padding: 11px 8px; text-align: left; white-space: nowrap; font-size: 13px; }
+th { color: #18d7ff; }
+td.addr, td.key { max-width: 260px; overflow: hidden; text-overflow: ellipsis; font-family: Consolas, monospace; }
+.empty td { text-align: center; color: #82aaa3; }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .cards { grid-template-columns: repeat(2, 1fr); } }

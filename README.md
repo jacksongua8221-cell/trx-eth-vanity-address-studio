@@ -1,18 +1,57 @@
-# TRX / ETH 靓号地址生成器 - 离线钱包地址生成器
+# TRX / ETH 靓号地址生成器
 
-本地离线 **TRX 靓号地址生成器 / ETH 靓号地址生成器 / TRON Vanity Address Generator / Ethereum Vanity Address Generator**。
+本项目是一个 **本地离线运行** 的 Windows 桌面工具，用来生成 TRX / ETH 靓号钱包地址。  
+不联网、不上传私钥、不上传助记词、不上传地址、不上传任务记录。
 
-这是一个 Windows 桌面工具，用来生成 **TRX / ETH 靓号钱包地址**。支持私钥、助记词、CPU 多线程、靓号筛选、概率统计、NVIDIA GPU 状态监控。
+大白话：你填想要的尾号，比如 `8888`、`666666`、`123456`，软件就在你电脑本地不断生成新地址，命中后只保存命中的地址和私钥。私钥是真实可导入钱包的，所以结果文件一定要自己保管好。
 
-大白话说：你填一个想要的尾号，比如 `8888`、`888888`，软件就在你电脑本地不断随机生成钱包地址，直到找到符合规则的地址。生成出来的私钥和助记词可以导入真实钱包，所以一定要自己保管好。
+[下载成品软件包](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases) ｜ [完整中文说明](./README.zh-CN.md)
 
-[Release 下载](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases) | [中文详情](./README.zh-CN.md)
+## 两个版本
 
-> 全程本地运行，不上传私钥、不上传助记词、不上传地址、不上传任务记录。
+### 1. 标准桌面版（原版保留）
+
+适合要完整桌面功能的人：
+
+- TRX / ETH 地址生成
+- 私钥模式、助记词模式、私钥 + 助记词同时保存
+- 前缀、后缀、包含、前缀 + 后缀等多种匹配
+- CPU 多线程生成
+- NVIDIA GPU 状态监控
+- 命中概率、理论难度、预计时间
+- 自动保存、checkpoint 恢复
+- 靓号筛选 Tab：导入 TXT 或实时同步疑似结果
+
+### 2. GPU 极速版（新增）
+
+适合只想高速跑目标靓号的人：
+
+- TRX 使用 OpenCL GPU 核心
+- ETH 使用 OpenCL GPU 核心
+- 只跑目标地址，命中才保存
+- 多个后缀可一行一个同时配置
+- TRX 不同后缀长度自动分组启动，避免 5 位、6 位、7 位目标互相干扰
+- 疑似豹子可设置 5 位起、6 位起、7 位起等
+- 疑似豹子支持数字 / 字母开关
+- 指定顺子只保留：`123456`、`1234567`、`12345678`、`1234567890`、`012345`、`987654`、`654321`
+- 目标结果保存到 `target.txt`
+- 疑似结果保存到 `suspicious.txt`
+
+## 截图
+
+### 标准桌面版 - 靓号生成
+
+![标准桌面版靓号生成](./docs/images/generator-page.png)
+
+### 标准桌面版 - 靓号筛选
+
+![标准桌面版靓号筛选](./docs/images/filter-page.png)
+
+### GPU 极速版
+
+![GPU 极速版](./docs/images/gpu-edition-page.png)
 
 ## 搜索关键词
-
-如果你是在 GitHub / Google / 百度搜索工具，可以用这些关键词找到本项目：
 
 ```text
 TRX 靓号地址生成器
@@ -21,154 +60,22 @@ ETH 靓号地址生成器
 Ethereum 靓号地址生成器
 钱包靓号生成器
 离线靓号地址生成器
-vanity address generator
-TRX vanity address
+TRX vanity address generator
 TRON vanity address generator
-ETH vanity address
+ETH vanity address generator
 Ethereum vanity address generator
+OpenCL vanity address
+GPU vanity address generator
 MetaMask 私钥导入
 TronLink 私钥导入
 ```
 
-## 软件截图
+## 安全提醒
 
-### 靓号生成
-
-![靓号生成页面](./docs/images/generator-page.png)
-
-### 靓号筛选
-
-![靓号筛选页面](./docs/images/filter-page.png)
-
-## 这个软件能做什么
-
-- 生成 TRX 靓号地址。
-- 生成 ETH 靓号地址。
-- 支持私钥生成。
-- 支持助记词生成。
-- 支持保存私钥、保存助记词，或者两者都保存。
-- 支持前缀、后缀、包含、前缀 + 后缀、前缀 + 包含、包含 + 后缀、前缀 + 包含 + 后缀。
-- 支持智能识别疑似靓号。
-- 支持 CPU 多线程生成。
-- 线程数运行中可以直接改，不用停掉重开。
-- 根据当前电脑 CPU 自动推荐线程数。
-- 支持 NVIDIA GPU 状态监控：显卡名、使用率、显存、温度、功耗。
-- 注意：当前版本 GPU 只做状态监控，生成任务还是 CPU 执行。
-- 支持概率仪表盘：理论难度、当前尝试次数、累计命中概率、预计命中时间。
-- 支持自动保存，防止中途崩溃导致结果丢失。
-- 支持靓号筛选，可以导入 TXT，也可以实时同步当前生成出来的疑似靓号。
-- 筛选结果里地址会高亮命中的靓号部分，私钥和助记词不会挤满表格，直接点按钮复制。
-
-## 适合谁用
-
-这个工具适合想自己离线生成地址的人。
-
-比如你想要：
-
-```text
-TRX 地址尾号 8888
-TRX 地址尾号 666666
-ETH 地址包含 8888
-ETH 地址前缀 abcd
-```
-
-就可以用这个软件一直跑。
-
-但是要注意，靓号不是越长越容易。比如 TRX 后缀 `888888` 的理论难度非常高，不是点一下马上就一定有。
-
-## 结果保存在哪里
-
-目标命中结果保存到：
-
-```text
-results/results.txt
-```
-
-疑似靓号结果保存到：
-
-```text
-results/suspicious/suspicious.txt
-```
-
-TXT 每行只保存你选择的内容，例如：
-
-```text
-地址 私钥
-地址 私钥 助记词
-```
-
-疑似靓号不会混进右侧目标命中列表，会单独保存，方便后面筛选。
-
-## 疑似靓号怎么判断
-
-疑似靓号只看后缀，不看前缀，不看中间。
-
-```text
-Txxxxxx8888  -> 命中
-T8888xxxxxx  -> 不命中
-Txxx8888xxx  -> 不命中
-```
-
-支持：
-
-```text
-后缀豹子号：8888 / 9999 / aaaa / 7777777 / 88888888
-后缀数字顺子：12345 / 234567 / 98765 / 876543
-后缀字母顺子：abcde / edcba
-自定义后缀：自己一行一个填写
-```
-
-不会内置 `dead / beef / cafe / face / feed` 这种英文词。如果你想要英文尾号，自己在自定义后缀里填。
-
-## 地址和私钥是否真实可用
-
-是的，生成逻辑按真实链规则来：
-
-ETH：
-
-```text
-私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> EIP-55 checksum 地址
-```
-
-TRX：
-
-```text
-私钥 -> secp256k1 公钥 -> Keccak-256 -> 后 20 字节 -> 加 0x41 -> Base58Check -> T 开头地址
-```
-
-测试里会用 `ethers` 校验 ETH 私钥和地址，用 `TronWeb` 校验 TRX 私钥和地址。
-
-## 下载使用
-
-到 Release 页面下载 Windows 便携版：
-
-[VanityAddressStudio-v0.1.0-win-portable.zip](https://github.com/jacksongua8221-cell/trx-eth-vanity-address-studio/releases/download/v0.1.0/VanityAddressStudio-v0.1.0-win-portable.zip)
-
-解压后双击：
-
-```text
-TRX_ETH_靓号地址生成器.exe
-```
-
-## 从源码运行
-
-```bash
-npm install
-npm start
-```
-
-打包：
-
-```bash
-npm run package:portable
-```
-
-验证：
-
-```bash
-npm test
-npm run verify:offline
-```
+- 私钥和助记词就是钱包资产凭证，谁拿到谁就能控制钱包。
+- 不要把结果 TXT、私钥、助记词、带私钥的截图发给别人。
+- 本项目只用于生成你自己的新地址，不是“反推私钥”或“破解钱包”工具。
+- 正式收款前，建议先用小额转账测试地址导入和收款是否正常。
 
 ## 打赏地址
 
@@ -179,14 +86,6 @@ TEmivtvDDCqiaNW4NvX9B6ngYz9f9U8888
 ```
 
 ![TRX/TRC20 打赏收款码](./docs/images/trx.jpg)
-
-## 安全提醒
-
-- 私钥和助记词就是钱包资产凭证，谁拿到谁就能控制钱包。
-- 不要把结果 TXT、截图、私钥、助记词发给别人。
-- 明文保存方便，但风险更高。
-- 正式使用前，建议先用空钱包导入测试。
-- 电脑中毒、远程控制、截图泄露，都可能导致私钥泄露。
 
 ## License
 

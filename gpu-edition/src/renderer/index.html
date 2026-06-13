@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRX / ETH GPU 靓号生成器</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>TRX / ETH GPU 靓号生成器</h1>
+          <p>本地离线运行，只保存命中地址和私钥。</p>
+        </div>
+        <strong id="status">待机</strong>
+      </header>
+
+      <section class="layout">
+        <aside class="panel">
+          <h2>配置</h2>
+
+          <label>链类型</label>
+          <select id="chain">
+            <option value="TRX">TRX GPU</option>
+            <option value="ETH">ETH GPU</option>
+          </select>
+
+          <label>匹配方式</label>
+          <select id="mode">
+            <option value="suffix">后缀</option>
+            <option value="prefix">前缀</option>
+            <option value="contains">包含</option>
+            <option value="prefix_suffix">前缀+后缀</option>
+          </select>
+          <div id="example" class="hint">填 8888 -> T****8888</div>
+
+          <label>目标内容</label>
+          <textarea id="targets" placeholder="一行一个，例如：&#10;888888&#10;8888888&#10;999999&#10;666666"></textarea>
+
+          <label class="check"><input id="suspiciousLeopard" type="checkbox" checked /> 保存疑似豹子</label>
+          <label>疑似豹子最少位数</label>
+          <select id="leopardMin">
+            <option value="5" selected>5 位起</option>
+            <option value="6">6 位起</option>
+            <option value="7">7 位起</option>
+            <option value="8">8 位起</option>
+            <option value="9">9 位起</option>
+          </select>
+          <div class="split">
+            <label class="check"><input id="leopardDigits" type="checkbox" checked /> 数字豹子</label>
+            <label class="check"><input id="leopardLetters" type="checkbox" checked /> 字母豹子</label>
+          </div>
+          <label class="check"><input id="suspiciousSequence" type="checkbox" checked /> 保存指定顺子</label>
+          <div class="hint">顺子只保留：123456 / 1234567 / 12345678 / 1234567890 / 012345 / 987654 / 654321</div>
+
+          <label>保存目录</label>
+          <div class="path">
+            <input id="resultsDir" readonly />
+            <button id="chooseDir">选择</button>
+          </div>
+
+          <div class="buttons">
+            <button id="startBtn" class="primary">开始</button>
+            <button id="stopBtn">停止</button>
+            <button id="openDir">打开目录</button>
+          </div>
+        </aside>
+
+        <section class="panel">
+          <h2>运行状态</h2>
+          <div class="cards">
+            <div><span>状态</span><b id="detail">待机</b></div>
+            <div><span>GPU</span><b id="gpu">检测中</b></div>
+            <div><span>速度</span><b id="speed">0 地址/秒</b></div>
+            <div><span>尝试次数</span><b id="attempts">0</b></div>
+            <div><span>运行时间</span><b id="runtime">00:00:00</b></div>
+            <div><span>目标命中</span><b id="targetHits">0</b></div>
+            <div><span>疑似保存</span><b id="suspiciousHits">0</b></div>
+            <div><span>CPU</span><b id="cpu">检测中</b></div>
+          </div>
+
+          <div class="table">
+            <table>
+              <thead>
+                <tr><th>类型</th><th>链</th><th>地址</th><th>规则</th><th>私钥</th><th>复制</th></tr>
+              </thead>
+              <tbody id="rows"><tr class="empty"><td colspan="6">等待命中结果</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
